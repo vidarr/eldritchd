@@ -1,7 +1,7 @@
 TARGET=../build/httpd
 
 LN=gcc
-CCFLAGS=-Wall -Wansi --strict-prototypes
+CFLAGS=-Wall -Wstrict-prototypes -g
 
 all: $(TARGET)
 
@@ -10,7 +10,7 @@ all: $(TARGET)
 ../build/%.o : %.c
 	$(CC) $(CFLAGS) -c $^ -o ../build/$@
 
-$(TARGET): ../build/httpd.o ../build/utils.o ../build/forker.o
+$(TARGET): ../build/http.o ../build/httpd.o ../build/utils.o ../build/forker.o
 	$(LN) $(LDFLAGS) $^ -o $(TARGET)
 
 clean:

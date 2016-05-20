@@ -17,19 +17,47 @@
  */
 #ifndef __UTILS_H__
 #define __UTILS_H__
-
+/*----------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
+#include <time.h>
+/*----------------------------------------------------------------------------*/
 #define PANIC(msg)                    \
     do {                              \
         fprintf(stderr, "%s\n", msg); \
         exit(1);                      \
-    }while(0);
-
+    }while(0)
+/*----------------------------------------------------------------------------*/
+#define NOP do{}while(0)
+/*----------------------------------------------------------------------------*/
+#define CHECK_STRING_FUNC(STR, LEN, CODE, EXCEPT_CODE) \
+    do {                                  \
+        STR[LEN] = 0;                     \
+        CODE;                             \
+        if(0 != STR[LEN]) {               \
+            STR[LEN] = 0;                 \
+            fprintf(stderr, "Detected string overflow: %s\n", STR);  \
+            EXCEPT_CODE;                  \
+        }                                 \
+    }while(0)
+/*----------------------------------------------------------------------------*/
 void sockaddrToSring(struct sockaddr *addr, char *buffer, size_t buflen);
-
+/*----------------------------------------------------------------------------*/
+/*                                LOGGING                                     */
+/*----------------------------------------------------------------------------*/
+#define INFO  0
+#define WARN  1
+#define ERROR 2
+/*----------------------------------------------------------------------------*/
+#define LOG(PRIO, MSG) do {           \
+    char __LOG_BUF__[255];            \
+    snprintf(__LOG_BUF__, 254, MSG);  \
+    __LOG_BUF__[254] = 0;             \
+    logMsg(PRIO, __LOG_BUF__, 254);   \
+}while(0)
+/*----------------------------------------------------------------------------*/
+void logMsg(int priority, char *message, size_t length);
+/*----------------------------------------------------------------------------*/
 #endif
-

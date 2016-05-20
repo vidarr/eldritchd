@@ -16,10 +16,11 @@
  * USA.
  */
 #include "utils.h"
-
-void sockaddrToSring(struct sockaddr *addr, char *buffer, size_t buflen)
+/*----------------------------------------------------------------------------*/
+void sockaddrToString(struct sockaddr *addr, char *buffer, size_t buflen)
 {
     void *addrIn = 0;
+    if(addr) {
     if (addr->sa_family == AF_INET) {
         addrIn = &(((struct sockaddr_in*)addr)->sin_addr);
     } else {
@@ -27,4 +28,33 @@ void sockaddrToSring(struct sockaddr *addr, char *buffer, size_t buflen)
     }
     inet_ntop(addr->sa_family, addrIn, buffer, buflen);
     buffer[buflen - 1] = 0;
+    } else {
+        buffer[0] = '-';
+        buffer[1] = 0;
+    }
 }
+/*----------------------------------------------------------------------------*/
+void logMsg(int priority, char *message, size_t length) {
+    char *strTime;
+    time_t now;
+    char *priorityString;
+    FILE *out = stdout;
+    if(priority != INFO) {
+        out = stderr;
+    }
+    switch(priority) {
+        case 0:
+            priorityString = "INFO";
+            break;
+        case 1:
+            priorityString = "WARN";
+            break;
+        default:
+            priorityString = "ERROR";
+    };
+    now = time(NULL);
+    strTime = ctime(&now);
+    message[length] = 0;
+    fprintf(out, " [%45s] %5s - %100s", strTime, priorityString, message);
+}
+/*----------------------------------------------------------------------------*/

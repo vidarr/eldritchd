@@ -17,17 +17,24 @@
  */
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
-
+/*----------------------------------------------------------------------------*/
 #define MAX_OPT_STR_LEN       255
+#define MAX_PENDING_REQUESTS  25
 #define DEFAULT_DOCUMENT_ROOT "/home/httpd/htdocs"
 #define DEFAULT_INTERFACE     ANY_INTERFACE
 #define DEFAULT_USER_DB       "/home/httpd/users"
 #define DEFAULT_RULES_DB      "/home/httpd/rules"
 #define DEFAULT_PORT          "531"
-#define DEFAULT_MAX_PENDING_REQUESTS 30
+#define DEFAULT_TIMEOUT_SECS  10
 #define PORT_MAX              ((1 << 16) -1)
-
+/*----------------------------------------------------------------------------*/
+#define MAX_DESCRIPTORS       25
+/*----------------------------------------------------------------------------*/
 #define ANY_INTERFACE         "*"
-
+/*----------------------------------------------------------------------------*/
+#define SOCKET_READ_BUFFER_LEN 255
+/*----------------------------------------------------------------------------*/
+#define MIN_TOKEN_LENGTH 16
+#define MAX_TOKEN_LENGTH (64 * 1024)
+/*----------------------------------------------------------------------------*/
 #endif
-

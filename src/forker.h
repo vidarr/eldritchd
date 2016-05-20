@@ -17,20 +17,19 @@
  */
 #ifndef __FORKER_H__
 #define __FORKER_H__
-
+/*----------------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <netdb.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/select.h>
+#include <time.h>
+#include <unistd.h>
 #include "config.h"
 #include "utils.h"
-
+/*----------------------------------------------------------------------------*/
 void forker_stop(int signal);
-
-void forker_listen(int socketFd, void (* acceptor)(int socketFd));
-
-void forker_accept(int socketFd);
-
+void forker_listen(int socketFd, void (* acceptor)(int, int));
+/*----------------------------------------------------------------------------*/
 #endif
-
