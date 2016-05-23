@@ -25,7 +25,6 @@
 #include <netdb.h>
 #include <signal.h>
 #include "config.h"
-#include "version.h"
 #include "utils.h"
 #include "authenticate.h"
 #include "forker.h"
@@ -217,7 +216,7 @@ int main(int argc, char** argv)
         };
     };
     printf("Starting Version %u.%u.%u\n",
-            MAJOR_VERSION, MINOR_VERSION, PATCH_VERSION);
+            VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
     authenticate_loadDbs(userDb, rulesDb);
     printf("Loaded user database from %s\n", userDb);
     printf("Loaded rules database from %s\n", rulesDb);

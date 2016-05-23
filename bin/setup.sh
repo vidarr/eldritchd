@@ -17,8 +17,8 @@ function setup_user {
         echo "User $USER exists"
         # exit 1
     else
-    	groupadd $GROUP
-    	useradd $USER -m -g $GROUP
+        groupadd $GROUP
+        useradd $USER -m -g $GROUP
     fi
     HOME_DIR=/home/$USER
 }
