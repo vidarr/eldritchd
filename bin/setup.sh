@@ -1,7 +1,7 @@
 #!/bin/bash
 USER=httpd
 GROUP=httpd
-EXECUTABLE=httpd
+EXECUTABLE=eldritch
 
 
 function check_root {
@@ -28,7 +28,7 @@ function setup_executable {
     chown root:root $HOME_DIR
     mkdir $HOME_DIR/bin
     chown root:root $HOME_DIR
-    cp ../build/$EXECUTABLE $HOME_DIR/bin
+    cp ../build/src/$EXECUTABLE $HOME_DIR/bin
     chmod u+s $HOME_DIR/bin/$EXECUTABLE
     chmod g+s $HOME_DIR/bin/$EXECUTABLE
 }

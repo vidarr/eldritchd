@@ -215,8 +215,8 @@ int main(int argc, char** argv)
                 PANIC("Unknown option");
         };
     };
-    printf("Starting Version %u.%u.%u\n",
-            VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+    printf("Starting Version %u.%u.%u Build %05u\n",
+            VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, BUILD_NUM);
     authenticate_loadDbs(userDb, rulesDb);
     printf("Loaded user database from %s\n", userDb);
     printf("Loaded rules database from %s\n", rulesDb);
