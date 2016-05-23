@@ -43,7 +43,7 @@
         }                                 \
     }while(0)
 /*----------------------------------------------------------------------------*/
-void sockaddrToSring(struct sockaddr *addr, char *buffer, size_t buflen);
+void sockaddrToString(struct sockaddr *addr, char *buffer, size_t buflen);
 /*----------------------------------------------------------------------------*/
 /*                                LOGGING                                     */
 /*----------------------------------------------------------------------------*/

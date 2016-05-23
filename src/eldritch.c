@@ -186,7 +186,9 @@ int main(int argc, char** argv)
     char *rulesDb;
     port = DEFAULT_PORT;
     opterr = 0;
-    /* checkUid(&uid, &gid); */
+    gid = 0;
+    uid = 0;
+    checkUid(&uid, &gid);
     port         = initializeString(DEFAULT_PORT);
     interface    = initializeString(DEFAULT_INTERFACE);
     documentRoot = initializeString(DEFAULT_DOCUMENT_ROOT);
@@ -230,7 +232,7 @@ int main(int argc, char** argv)
     listenSocket = bindTo(interface, port);
     memset(interface, 0, MAX_OPT_STR_LEN);
     free(interface);
-    /* dropPriviledges(uid, gid); */
+    dropPriviledges(uid, gid);
     registerSignals();
     printf("Dropped priviledges\n");
     printf("uid=%i gid=%i   euid=%i   egid=%i\n",

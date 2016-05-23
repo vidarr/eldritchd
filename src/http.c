@@ -215,19 +215,9 @@ int http_readRequest(int socketFd, HttpRequest* request)
 /*----------------------------------------------------------------------------*/
 void http_accept(int socketFd, int timeoutSecs)
 {
-    struct timeval timeout;
     HttpRequest* request = malloc(sizeof(HttpRequest));
     memset((void *)request, 0, sizeof(HttpRequest));
-    printf("Forked\n");
-    timeout.tv_sec = timeoutSecs;
-    timeout.tv_usec = 0;
-    if(0 != setsockopt(socketFd, SOL_SOCKET, SO_RCVTIMEO, &timeout,
-                sizeof(struct timeval)) )
-    {
-        close(socketFd);
-        perror(strerror(errno));
-        PANIC("Could not set timeout on socket");
-    }
+    printf("New HTTP request incoming\n");
     if( 0 != http_readRequest(socketFd, request))
     {
         close(socketFd);

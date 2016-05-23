@@ -15,14 +15,16 @@ function setup_user {
     $(id $USER &> /dev/null)
     if [ $? == 0 ]; then
         echo "User $USER exists"
-        exit 1
+        # exit 1
+    else
+    	groupadd $GROUP
+    	useradd $USER -m -g $GROUP
     fi
-    groupadd $GROUP
-    useradd $USER -m -g $GROUP
     HOME_DIR=/home/$USER
 }
 
 function setup_executable {
+    echo "Installing to $HOME_DIR"
     chown root:root $HOME_DIR
     mkdir $HOME_DIR/bin
     chown root:root $HOME_DIR

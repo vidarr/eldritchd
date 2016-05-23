@@ -26,6 +26,7 @@
 #include <sys/select.h>
 #include <time.h>
 #include <unistd.h>
+#include <signal.h>
 #include "config.h"
 #include "utils.h"
 /*----------------------------------------------------------------------------*/

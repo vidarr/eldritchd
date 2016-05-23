@@ -47,6 +47,7 @@ int initDescriptorSet(fd_set **descriptorSet) {
     for(i = 0; i < MAX_DESCRIPTORS; i++) {
         if(0 < descriptors[i]) {
             if(timeoutEpocs[i] < epoc) {
+                close(descriptors[i]);
                 descriptors[i] = -1;
                 timeoutEpocs[i] = -1;
             } else {
@@ -75,10 +76,12 @@ int insertDescriptor(int sock) {
 /*----------------------------------------------------------------------------*/
 void processFileDescriptors(fd_set *descriptorSet) {
     int i;
+    struct timeval timeout;
     printf("processFileDescriptors\n");
     time_t epoc = time(NULL);
     for(i = 0; i < MAX_DESCRIPTORS; i++) {
         if(timeoutEpocs[i] < epoc) {
+            close(descriptors[i]);
             descriptors[i] = -1;
             timeoutEpocs[i] = -1;
         } else if(FD_ISSET(descriptors[i], descriptorSet)) {
@@ -118,6 +121,15 @@ void processFileDescriptors(fd_set *descriptorSet) {
                     hostAddress, INET6_ADDRSTRLEN),          \
                 NOP);
             printf("Incoming connection from %s\n", hostAddress);
+            /* set timeout on socket */
+            timeout.tv_sec = timeoutSecs;
+            timeout.tv_usec = 0;
+            if(0 != setsockopt(incomingSocket, SOL_SOCKET, SO_RCVTIMEO,
+                        &timeout, sizeof(struct timeval)) )
+            {
+                close(incomingSocket);
+                perror(strerror(errno));
+            }
             if(0 != insertDescriptor(incomingSocket)) {
                 fprintf(stderr,
                         "Reached max. amount of open descriptors - closing\n");
@@ -176,6 +188,11 @@ void forker_loopRead(void) {
 }
 /*----------------------------------------------------------------------------*/
 void forker_listen(int socketFd, void (*acceptorFunc)(int, int)) {
+    struct sigaction sigchildNoWait = {
+        .sa_handler = SIG_DFL,
+        .sa_flags = SA_NOCLDWAIT
+    };
+    sigaction(SIGCHLD, &sigchildNoWait, NULL);
     if(0 != listen(socketFd, MAX_PENDING_REQUESTS)) {
         perror(strerror(errno));
         close(socketFd);
