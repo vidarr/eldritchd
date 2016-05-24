@@ -1,19 +1,35 @@
 /*
  * (C) 2016 Michael J. Beer
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
+ * All rights reserved.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Redistribution  and use in source and binary forms, with or with‐
+ * out modification, are permitted provided that the following  con‐
+ * ditions are met:
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
- * USA.
+ * 1. Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above  copy‐
+ * right  notice,  this  list  of  conditions and the following dis‐
+ * claimer in the documentation and/or other materials provided with
+ * the distribution.
+ *
+ * 3.  Neither the name of the copyright holder nor the names of its
+ * contributors may be used to endorse or promote  products  derived
+ * from this software without specific prior written permission.
+ *
+ * THIS  SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBU‐
+ * TORS "AS IS" AND ANY EXPRESS OR  IMPLIED  WARRANTIES,  INCLUDING,
+ * BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE  ARE  DISCLAIMED.  IN  NO  EVENT
+ * SHALL  THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DI‐
+ * RECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR  CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS IN‐
+ * TERRUPTION)  HOWEVER  CAUSED  AND  ON  ANY  THEORY  OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING  NEGLI‐
+ * GENCE  OR  OTHERWISE)  ARISING  IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <fcntl.h>
 #include "forker.h"
@@ -45,7 +61,7 @@ int initDescriptorSet(fd_set **descriptorSet) {
     FD_SET(acceptSocket, *descriptorSet);
     maxDescriptor = acceptSocket;
     for(i = 0; i < MAX_DESCRIPTORS; i++) {
-        if(0 < descriptors[i]) {
+        if(0 <= descriptors[i]) {
             if(timeoutEpocs[i] < epoc) {
                 close(descriptors[i]);
                 descriptors[i] = -1;
@@ -67,7 +83,6 @@ int insertDescriptor(int sock) {
         if(0 > descriptors[i]) {
             descriptors[i] = sock;
             timeoutEpocs[i] = time(NULL) + timeoutSecs;
-            printf("Inserted new socket at pos %i\n", i);
             return 0;
         }
     }
@@ -80,7 +95,7 @@ void processFileDescriptors(fd_set *descriptorSet) {
     printf("processFileDescriptors\n");
     time_t epoc = time(NULL);
     for(i = 0; i < MAX_DESCRIPTORS; i++) {
-        if(timeoutEpocs[i] < epoc) {
+        if( (0 <= descriptors[i]) && (timeoutEpocs[i] < epoc) ) {
             close(descriptors[i]);
             descriptors[i] = -1;
             timeoutEpocs[i] = -1;
@@ -93,14 +108,15 @@ void processFileDescriptors(fd_set *descriptorSet) {
             pid = fork();
             if(0 == pid) {
                 /* I am the child */
+                close(acceptSocket);
                 acceptor(readySocket, timeoutSecs);
                 exit(0);
             }
             /* I am still the parent */
+            close(readySocket);
             if(0 > pid) {
                 perror(strerror(errno));
                 fprintf(stderr, "Could not fork\n");
-                close(readySocket);
             }
         }
     }
@@ -123,7 +139,7 @@ void processFileDescriptors(fd_set *descriptorSet) {
             printf("Incoming connection from %s\n", hostAddress);
             /* set timeout on socket */
             timeout.tv_sec = timeoutSecs;
-            timeout.tv_usec = 0;
+            timeout.tv_usec = 1;
             if(0 != setsockopt(incomingSocket, SOL_SOCKET, SO_RCVTIMEO,
                         &timeout, sizeof(struct timeval)) )
             {
@@ -152,6 +168,7 @@ void closeDescriptors(void) {
 }
 /*----------------------------------------------------------------------------*/
 void forker_loopRead(void) {
+    struct timeval selectTimeout;
     fd_set fdToReadFrom;
     int maxDescriptor;
     fd_set *fdSetPointer = &fdToReadFrom;
@@ -165,8 +182,14 @@ void forker_loopRead(void) {
     }
     while(keepListening) {
         maxDescriptor = initDescriptorSet(&fdSetPointer);
+        /* select(2) might modify this structure, thus initialize it
+         * before every call to select(2) */
+        selectTimeout.tv_sec = timeoutSecs;
+        selectTimeout.tv_usec = 0;
         /* Will only be interrupted by signals */
-        maxDescriptor = select(maxDescriptor + 1, &fdToReadFrom, NULL, NULL, NULL);
+        /* And timeouts */
+        maxDescriptor = select(maxDescriptor + 1, &fdToReadFrom, NULL, NULL,
+                               &selectTimeout);
         printf("select returned with %i\n", maxDescriptor);
         if( 0 > maxDescriptor) {
             if((EBADF == errno) || (EINVAL == errno) || (ENOMEM == errno)) {
@@ -174,8 +197,8 @@ void forker_loopRead(void) {
                 closeDescriptors();
                 PANIC("Error while waiting on incoming requests");
             }
-            if(EINTR != errno) {
-                /* The signal callback takes care of setting keepRunning = 0 */
+            else if(EINTR == errno) {
+                keepListening = 0;
             } else {
                 perror(strerror(errno));
             }
