@@ -32,27 +32,57 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "utils.h"
+#include <errno.h>
+#include <string.h>
+#include <sys/socket.h>
 /*----------------------------------------------------------------------------*/
-void sockaddrToString(struct sockaddr *addr, char *buffer, size_t buflen)
+char* sockaddrToString(struct sockaddr* addr)
 {
+    static char addressStr[128];
+    static char portStr[7];
     void *addrIn = 0;
+    struct sockaddr_in* sin;
+    struct sockaddr_in6* sin6;
     if(addr) {
-    if (addr->sa_family == AF_INET) {
-        addrIn = &(((struct sockaddr_in*)addr)->sin_addr);
+        switch(addr->sa_family)
+        {
+            case AF_INET:
+                sin = (struct sockaddr_in*)addr;
+                addrIn = &(sin->sin_addr);
+                snprintf(portStr, 7, ":%d", ntohs(sin->sin_port));
+                break;
+            case AF_INET6:
+                sin6 = (struct sockaddr_in6*)addr;
+                snprintf(portStr, 7, ":%i", ntohs(sin6->sin6_port));
+                addrIn = &(sin->sin_addr);
+                break;
+            default:
+                fprintf(stderr,
+                        "Could not print network address: "
+                        "family not supported %d\n", addr->sa_family);
+                return "UNKNOWN";
+        };
+        if(NULL == inet_ntop(addr->sa_family, addrIn, addressStr, 128))
+        {
+            fprintf(stderr, "Could not print network address:%s\n",
+                    strerror(errno));
+            return "INVALID";
+        }
+        strncat(addressStr, portStr, 128);
+        addressStr[127] = 0;
     } else {
-        addrIn = &(((struct sockaddr_in6*)addr)->sin6_addr);
+        addressStr[0] = '-';
+        addressStr[1] = 0;
     }
-    inet_ntop(addr->sa_family, addrIn, buffer, buflen);
-    buffer[buflen - 1] = 0;
-    } else {
-        buffer[0] = '-';
-        buffer[1] = 0;
-    }
+    return addressStr;
 }
 /*----------------------------------------------------------------------------*/
-void logMsg(int priority, char *message, size_t length) {
-    char *strTime;
+char buffer[BUFFER_LENGTH];
+/*----------------------------------------------------------------------------*/
+void logMsg(int priority, int sockfd, char* message, size_t length) {
+    static char strTime[45];
     time_t now;
+    struct tm * localTime;
     char *priorityString;
     FILE *out = stdout;
     if(priority != INFO) {
@@ -69,8 +99,27 @@ void logMsg(int priority, char *message, size_t length) {
             priorityString = "ERROR";
     };
     now = time(NULL);
-    strTime = ctime(&now);
+    localTime = localtime(&now);
+    strftime(strTime, 45, "%c", localTime);
     message[length] = 0;
-    fprintf(out, " [%45s] %5s - %100s", strTime, priorityString, message);
+    if(0 > sockfd)
+    {
+        fprintf(out, " [%30s] %5s - %50s\n", strTime, priorityString, message);
+    }
+    else
+    {
+        struct sockaddr addr;
+        socklen_t addrLength = sizeof(addr);
+        memset(&addr, addrLength, 0);
+        if(0 != getsockname(sockfd, &addr, &addrLength))
+        {
+            fprintf(out,
+                    " [%30s] %5s - %50s\n", strTime, priorityString, message);
+            return;
+        }
+        fprintf(out, " [%30s] %5s - %50s - %50s\n",
+                strTime, priorityString,
+                message, sockaddrToString(&addr));
+    }
 }
 /*----------------------------------------------------------------------------*/

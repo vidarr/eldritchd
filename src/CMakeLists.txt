@@ -11,6 +11,7 @@ set (
     forker.c
     http.c
     utils.c
+    url.c
 )
 
 set (
@@ -19,7 +20,9 @@ set (
     forker.h
     http.h
     utils.h
+    url.h
 )
+add_library(eldritch ${eldritch_src_source_files} ${eldritch_src_header_files})
 # add the executable
-add_executable(eldritch eldritch.c ${eldritch_src_source_files}
-                                   ${eldritch_src_header_files})
+add_executable(eldritchd eldritch.c)
+target_link_libraries(eldritchd eldritch)

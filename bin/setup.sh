@@ -1,8 +1,14 @@
 #!/bin/bash
 USER=httpd
 GROUP=httpd
-EXECUTABLE=eldritch
+EXECUTABLE=eldritchd
+VERSION=release
 
+function parse_arguments {
+    if [ ! -z $1 ]; then
+        VERSION=$1
+    fi
+}
 
 function check_root {
     if [ $(id -u) != 0 ]; then
@@ -24,11 +30,12 @@ function setup_user {
 }
 
 function setup_executable {
-    echo "Installing to $HOME_DIR"
+    SOURCE=../${VERSION}/src/$EXECUTABLE 
+    echo "Installing $SOURCE to $HOME_DIR/bin"
     chown root:root $HOME_DIR
     mkdir $HOME_DIR/bin
     chown root:root $HOME_DIR
-    cp ../build/src/$EXECUTABLE $HOME_DIR/bin
+    cp $SOURCE $HOME_DIR/bin
     chmod u+s $HOME_DIR/bin/$EXECUTABLE
     chmod g+s $HOME_DIR/bin/$EXECUTABLE
 }
@@ -38,6 +45,8 @@ function setup_root_directory {
     chown $USER:$GROUP $HOME_DIR/htdocs
 }
 
+
+parse_arguments
 check_root
 setup_user
 setup_executable

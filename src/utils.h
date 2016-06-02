@@ -59,7 +59,7 @@
         }                                 \
     }while(0)
 /*----------------------------------------------------------------------------*/
-void sockaddrToString(struct sockaddr *addr, char *buffer, size_t buflen);
+char* sockaddrToString(struct sockaddr *addr);
 /*----------------------------------------------------------------------------*/
 /*                                LOGGING                                     */
 /*----------------------------------------------------------------------------*/
@@ -67,13 +67,18 @@ void sockaddrToString(struct sockaddr *addr, char *buffer, size_t buflen);
 #define WARN  1
 #define ERROR 2
 /*----------------------------------------------------------------------------*/
-#define LOG(PRIO, MSG) do {           \
+#define BUFFER_LENGTH 128
+extern char buffer[BUFFER_LENGTH];
+/*----------------------------------------------------------------------------*/
+#define LOG(PRIO, MSG) LOG_CON(PRIO, 0, MSG)
+/*----------------------------------------------------------------------------*/
+#define LOG_CON(PRIO, SOCKADDR, MSG) do {           \
     char __LOG_BUF__[255];            \
     snprintf(__LOG_BUF__, 254, MSG);  \
     __LOG_BUF__[254] = 0;             \
-    logMsg(PRIO, __LOG_BUF__, 254);   \
+    logMsg(PRIO, SOCKADDR, __LOG_BUF__, 254);   \
 }while(0)
 /*----------------------------------------------------------------------------*/
-void logMsg(int priority, char *message, size_t length);
+void logMsg(int priority, int sockfd, char *message, size_t length);
 /*----------------------------------------------------------------------------*/
 #endif

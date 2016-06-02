@@ -15,4 +15,8 @@ add_custom_target(
     WORKING_DIRECTORY "${eldritch_SOURCE_DIR}/bin"
 )
 
+enable_testing()
+add_subdirectory("test")
 add_subdirectory("src")
+
+add_test(NAME testUrl COMMAND test_url)

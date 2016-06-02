@@ -38,7 +38,7 @@ static int keepListening = 1;
 static int timeoutSecs = DEFAULT_TIMEOUT_SECS;
 /*----------------------------------------------------------------------------*/
 void forker_stop(int signal) {
-    printf("Caught signal %i ...\n", signal);
+    LOG(INFO, "Caught signal...");
     keepListening = 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -92,7 +92,6 @@ int insertDescriptor(int sock) {
 void processFileDescriptors(fd_set *descriptorSet) {
     int i;
     struct timeval timeout;
-    printf("processFileDescriptors\n");
     time_t epoc = time(NULL);
     for(i = 0; i < MAX_DESCRIPTORS; i++) {
         if( (0 <= descriptors[i]) && (timeoutEpocs[i] < epoc) ) {
@@ -100,7 +99,6 @@ void processFileDescriptors(fd_set *descriptorSet) {
             descriptors[i] = -1;
             timeoutEpocs[i] = -1;
         } else if(FD_ISSET(descriptors[i], descriptorSet)) {
-            printf("found ready descriptor\n");
             pid_t pid;
             int readySocket = descriptors[i];
             descriptors[i] = -1;
@@ -115,28 +113,25 @@ void processFileDescriptors(fd_set *descriptorSet) {
             /* I am still the parent */
             close(readySocket);
             if(0 > pid) {
-                perror(strerror(errno));
-                fprintf(stderr, "Could not fork\n");
+                LOG(ERROR, strerror(errno));
+                LOG(ERROR, "Could not fork");
             }
         }
     }
     if(FD_ISSET(acceptSocket, descriptorSet)) {
         struct sockaddr incomingAddress;
         socklen_t incomingAddressLength;
-        char hostAddress[INET6_ADDRSTRLEN + 1];
         int incomingSocket;
-        incomingAddressLength = 0;
-        printf("Accepting new connection...\n");
+        incomingAddressLength = sizeof(incomingAddressLength);
+        LOG(INFO, "Accepting new connection...");
         incomingSocket = accept(acceptSocket,
                 &incomingAddress, &incomingAddressLength);
         if(0 > incomingSocket) {
-            perror(strerror(errno));
+            LOG(ERROR, strerror(errno));
         } else {
-            CHECK_STRING_FUNC(hostAddress, INET6_ADDRSTRLEN, \
-                sockaddrToString(&incomingAddress,           \
-                    hostAddress, INET6_ADDRSTRLEN),          \
-                NOP);
-            printf("Incoming connection from %s\n", hostAddress);
+            snprintf(buffer, BUFFER_LENGTH, "Incoming connection from %s",
+                    sockaddrToString(&incomingAddress));
+            LOG_CON(INFO, incomingSocket, buffer);
             /* set timeout on socket */
             timeout.tv_sec = timeoutSecs;
             timeout.tv_usec = 1;
@@ -144,11 +139,11 @@ void processFileDescriptors(fd_set *descriptorSet) {
                         &timeout, sizeof(struct timeval)) )
             {
                 close(incomingSocket);
-                perror(strerror(errno));
+                LOG(ERROR, strerror(errno));
             }
             if(0 != insertDescriptor(incomingSocket)) {
-                fprintf(stderr,
-                        "Reached max. amount of open descriptors - closing\n");
+                LOG(ERROR,
+                        "Reached max. amount of open descriptors - closing");
                 close(incomingSocket);
             }
         }
@@ -168,7 +163,6 @@ void closeDescriptors(void) {
 }
 /*----------------------------------------------------------------------------*/
 void forker_loopRead(void) {
-    struct timeval selectTimeout;
     fd_set fdToReadFrom;
     int maxDescriptor;
     fd_set *fdSetPointer = &fdToReadFrom;
@@ -182,18 +176,12 @@ void forker_loopRead(void) {
     }
     while(keepListening) {
         maxDescriptor = initDescriptorSet(&fdSetPointer);
-        /* select(2) might modify this structure, thus initialize it
-         * before every call to select(2) */
-        selectTimeout.tv_sec = timeoutSecs;
-        selectTimeout.tv_usec = 0;
         /* Will only be interrupted by signals */
-        /* And timeouts */
         maxDescriptor = select(maxDescriptor + 1, &fdToReadFrom, NULL, NULL,
-                               &selectTimeout);
-        printf("select returned with %i\n", maxDescriptor);
+                               NULL);
         if( 0 > maxDescriptor) {
             if((EBADF == errno) || (EINVAL == errno) || (ENOMEM == errno)) {
-                perror(strerror(errno));
+                LOG(ERROR, strerror(errno));
                 closeDescriptors();
                 PANIC("Error while waiting on incoming requests");
             }
@@ -203,7 +191,6 @@ void forker_loopRead(void) {
                 perror(strerror(errno));
             }
         } else {
-            printf("select returned with %i\n", maxDescriptor);
             processFileDescriptors(&fdToReadFrom);
         }
     }

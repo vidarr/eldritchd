@@ -142,7 +142,6 @@ int tryBindTo(struct addrinfo *addr)
 int bindTo(char *interface, char *port)
 {
     int socketFd;
-    char buffer[MAX_OPT_STR_LEN];
     struct addrinfo *addrInfo;
     struct addrinfo *res;
     retrieveAddrInfo(interface, port, &addrInfo);
@@ -151,9 +150,9 @@ int bindTo(char *interface, char *port)
         socketFd = tryBindTo(res);
         if(0 < socketFd)
         {
-            sockaddrToString(res->ai_addr, buffer, MAX_OPT_STR_LEN);
-            buffer[MAX_OPT_STR_LEN - 1] = 0;
-            printf("Bound to %s\n", buffer);
+            snprintf(buffer, BUFFER_LENGTH,
+                    "Bound to %s", sockaddrToString(res->ai_addr));
+            LOG(INFO, buffer);
             freeaddrinfo(addrInfo);
             return socketFd;
         }
@@ -231,17 +230,25 @@ int main(int argc, char** argv)
                 PANIC("Unknown option");
         };
     };
-    printf("Starting Version %u.%u.%u Build %05u\n",
-            VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, BUILD_NUM);
+    snprintf(buffer, BUFFER_LENGTH,
+    "Starting Version %u.%u.%u Build %05u",
+        VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, BUILD_NUM);
+    LOG(INFO, buffer);
     authenticate_loadDbs(userDb, rulesDb);
-    printf("Loaded user database from %s\n", userDb);
-    printf("Loaded rules database from %s\n", rulesDb);
+    snprintf(buffer, BUFFER_LENGTH,
+             "Loaded user database from %s", userDb);
+    LOG(INFO, buffer);
+    snprintf(buffer, BUFFER_LENGTH,
+             "Loaded rules database from %s", rulesDb);
+    LOG(INFO, buffer);
     memset(userDb, 0, MAX_OPT_STR_LEN);
     memset(rulesDb, 0, MAX_OPT_STR_LEN);
     free(userDb);
     free(rulesDb);
     changeRoot(documentRoot);
-    printf("Chrooted to %s\n", documentRoot);
+    snprintf(buffer, BUFFER_LENGTH,
+             "Chrooted to %s", documentRoot);
+    LOG(INFO, buffer);
     memset(documentRoot, 0, MAX_OPT_STR_LEN);
     free(documentRoot);
     listenSocket = bindTo(interface, port);
@@ -249,11 +256,13 @@ int main(int argc, char** argv)
     free(interface);
     dropPriviledges(uid, gid);
     registerSignals();
-    printf("Dropped priviledges\n");
-    printf("uid=%i gid=%i   euid=%i   egid=%i\n",
-            getuid(), getgid(), geteuid(), getegid());
+    LOG(INFO, "Dropped priviledges");
+    snprintf(buffer, BUFFER_LENGTH,
+             "uid=%i gid=%i   euid=%i   egid=%i",
+             getuid(), getgid(), geteuid(), getegid());
+    LOG(INFO, buffer);
     forker_listen(listenSocket, http_accept);
-    printf("Closing listening socket\n");
+    LOG(INFO, "Closing listening socket");
     close(listenSocket);
     return 0;
 }

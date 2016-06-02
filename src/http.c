@@ -32,7 +32,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <fcntl.h>
+#include <assert.h>
 #include "http.h"
+#include "url.h"
 /*----------------------------------------------------------------------------*/
 #define CRLF "\r\n"
 #define CR    '\r'
@@ -120,7 +122,7 @@ int http_processGet(int socketFd, ssize_t readBytes,
         NEXT_CHAR(c, socketFd);                          \
         if(toupper(c) != expectedChar)                   \
         {                                                \
-            fprintf(stderr,                              \
+            LOG(WARN,                                    \
                     "Could not interpret request - "     \
                     "unsupported HTTP method?\n");       \
             return -1;                                   \
@@ -140,7 +142,7 @@ static char getToken(int socketFd, char** buffer, size_t* bufferLength)
     NEXT_CHAR(c, socketFd);
     while( (SPACE != c) && (CR != c) && (LF != c) )
     {
-        if(writeIndex >= *bufferLength - 1)
+        if(writeIndex >= *bufferLength - 2)
         {
             if(MAX_TOKEN_LENGTH <= *bufferLength)
             {
@@ -153,9 +155,11 @@ static char getToken(int socketFd, char** buffer, size_t* bufferLength)
             *bufferLength *= 2;
             *buffer = realloc(*buffer, *bufferLength);
         }
+        (*buffer)[writeIndex] = c;
         writeIndex++;
         NEXT_CHAR(c, socketFd);
     }
+    (*buffer)[writeIndex] = 0;
     return c;
 }
 /*----------------------------------------------------------------------------*/
@@ -174,7 +178,6 @@ int http_readRequest(int socketFd, HttpRequest* request)
     /* Read method */
     while(DONE != readingState)
     {
-        printf("Reading...\n");
         NEXT_CHAR(c, socketFd);
         switch( toupper(c) )
         {
@@ -182,7 +185,7 @@ int http_readRequest(int socketFd, HttpRequest* request)
             case CR:
                 if(BEFORE != readingState)
                 {
-                    fprintf(stderr, "Premature end of HTTP request\n");
+                    LOG(ERROR, "Premature end of HTTP request\n");
                     return -1;
                 }
                 break;
@@ -202,7 +205,7 @@ int http_readRequest(int socketFd, HttpRequest* request)
                 readingState = DONE;
                 break;
             default:
-                fprintf(stderr,
+                LOG_CON(ERROR, socketFd,
                         "Could not parse HTTP request - "
                         " Unsupported HTTP method?\n");
                 return -1;
@@ -210,7 +213,7 @@ int http_readRequest(int socketFd, HttpRequest* request)
     };
     if(SPACE != getToken(socketFd, request->url, &request->urlMaxLength) )
     {
-        fprintf(stderr, "Could not read URL for HTTP requst\n");
+        LOG_CON(ERROR, socketFd, "Could not read URL for HTTP requst\n");
         return -1;
     }
     EXPECT('H', c, socketFd);
@@ -229,36 +232,62 @@ int http_readRequest(int socketFd, HttpRequest* request)
 #undef NEXT_CHAR
 #undef EXPECT
 /*----------------------------------------------------------------------------*/
-void http_accept(int socketFd, int timeoutSecs)
+int http_processGetHead(int socketFd, HttpRequest* request)
 {
-    HttpRequest* request = malloc(sizeof(HttpRequest));
-    memset((void *)request, 0, sizeof(HttpRequest));
-    printf("New HTTP request incoming\n");
-    if( 0 != http_readRequest(socketFd, request))
+    char* path = 0;
+    size_t pathLength = 0;
+    if( (0 != url_getPath(*(request->url), request->urlMaxLength,
+                          &path, &pathLength)) ||
+            (1 > pathLength) )
     {
+        snprintf(buffer, BUFFER_LENGTH,
+                 "Requested url '%s' malformed\n", request->url);
+        LOG_CON(ERROR, socketFd, buffer);
+        if(0 != http_sendResponseStatus(socketFd, 200))
+        {
+            LOG_CON(ERROR, socketFd, strerror(errno));
+        }
         close(socketFd);
-        /* PANIC("Something wrong with the HTTP header"); */
+        PANIC("Requested url malformed");
     }
-    fprintf(stderr, "Got Http Request\n");
-    if(GET != request->type)
-    {
-        http_sendResponseStatus(socketFd, 405);
-        close(socketFd);
-        fprintf(stderr, "Got unsupported request type %i\n", request->type);
-        PANIC("Bad request");
-    }
-    /* TODO: Check availability of file */
+    path[pathLength] = 0;
+    fprintf(stderr, "Requested '%s'\n", path);
     if(0 != http_sendResponseStatus(socketFd, 200))
     {
         close(socketFd);
         PANIC("Could not send HTTP response");
     }
-    if(0 != http_sendHeader("Conent-Type", "text/html; charset=UTF-8"))
+    if(0 != http_sendHeader("Content-Type", "text/html; charset=UTF-8"))
     {
         close(socketFd);
         PANIC("Could not send HTTP response");
     }
-    /* TODO: Send  */
+}
+/*----------------------------------------------------------------------------*/
+void http_accept(int socketFd, int timeoutSecs)
+{
+    HttpRequest* request = malloc(sizeof(HttpRequest));
+    memset((void *)request, 0, sizeof(HttpRequest));
+    LOG_CON(INFO, socketFd, "New HTTP request incoming");
+    if( 0 != http_readRequest(socketFd, request))
+    {
+        close(socketFd);
+        PANIC("Something wrong with the HTTP header");
+    }
+    switch(request->type)
+    {
+        case GET:
+        case HEAD:
+            http_processGetHead(socketFd, request);
+            break;
+        case OTHER:
+        http_sendResponseStatus(socketFd, 405);
+        close(socketFd);
+        LOG_CON(WARN, socketFd, "Unsupported request type");
+        PANIC("Bad request");
+        default:
+            assert(! "SHOULD NEVER HAPPEND");
+    }
     close(socketFd);
 }
 /*----------------------------------------------------------------------------*/
