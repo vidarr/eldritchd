@@ -33,6 +33,8 @@
  */
 #include <fcntl.h>
 #include <assert.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
 #include "http.h"
 #include "url.h"
 /*----------------------------------------------------------------------------*/
@@ -47,21 +49,28 @@ static char buffer1[BUF_SIZE + 1];
 static char* readBuffer = buffer1;
 static size_t readBufferDataEndIndex = 0;
 static size_t readBufferDataBeginIndex = 0;
+static struct stat fileState;
 /*----------------------------------------------------------------------------*/
 char *http_message(int statusCode)
 {
-    if( (199 < statusCode) && (statusCode < 300) )
+    switch(statusCode)
     {
-        return OK_STR;
-    }
-    if( (299 < statusCode) && (statusCode < 400) )
-    {
-        return REDIRECT_STR;
-    }
-    if( (399 < statusCode) && (statusCode < 500) )
-    {
-        return CLIENT_ERROR_STR;
-    }
+        case 404:
+            return "Not Found";
+        default:
+            if( (199 < statusCode) && (statusCode < 300) )
+            {
+                return OK_STR;
+            }
+            if( (299 < statusCode) && (statusCode < 400) )
+            {
+                return REDIRECT_STR;
+            }
+            if( (399 < statusCode) && (statusCode < 500) )
+            {
+                return CLIENT_ERROR_STR;
+            }
+    };
     return UNKNOWN_ERROR_STR;
 }
 /*----------------------------------------------------------------------------*/
@@ -72,19 +81,24 @@ char *http_message(int statusCode)
             perror("While sending: line exceeding limit\n"); \
             return -1;                           \
         }                                        \
+        if(length != send(socket, data, length, 0)) \
+        {                                        \
+            return -1;                           \
+        }                                        \
     } while(0)
 /*----------------------------------------------------------------------------*/
 int http_sendResponseStatus(int socketFd, int statusCode)
 {
     int   numPrinted;
-    numPrinted = snprintf(readBuffer, BUF_SIZE, "HTTP/1.1 %3i %s" CRLF,
+    numPrinted = snprintf(readBuffer, BUF_SIZE, "HTTP/1.0 %3i %s" CRLF,
             statusCode, http_message(statusCode));
     readBuffer[BUF_SIZE] = 0;
+    printf("%i    - '%s'\n", numPrinted, readBuffer);
     SEND(socketFd, readBuffer, numPrinted);
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-int http_sendHeader(char* key, char* value)
+int http_sendHeader(int socketFd, char* key, char* value)
 {
     int   numPrinted;
     numPrinted = snprintf(readBuffer, BUF_SIZE, "%s: %s" CRLF,
@@ -92,6 +106,12 @@ int http_sendHeader(char* key, char* value)
     readBuffer[BUF_SIZE] = 0;
     SEND(socketFd, readBuffer, numPrinted);
     return 0;
+}
+/*----------------------------------------------------------------------------*/
+int http_terminateRequest(socketFd)
+{
+    static char* crlf = CRLF;
+    return 2 != send(socketFd, crlf, 2, 0);
 }
 /*----------------------------------------------------------------------------*/
 int http_processGet(int socketFd, ssize_t readBytes,
@@ -195,6 +215,7 @@ int http_readRequest(int socketFd, HttpRequest* request)
                 EXPECT('T', c, socketFd);
                 EXPECT(SPACE, c, socketFd);
                 readingState = DONE;
+                LOG_CON(INFO, socketFd, "Got GET request");
                 break;
             case 'H':
                 request->type = HEAD;
@@ -203,6 +224,7 @@ int http_readRequest(int socketFd, HttpRequest* request)
                 EXPECT('D', c, socketFd);
                 EXPECT(SPACE, c, socketFd);
                 readingState = DONE;
+                LOG_CON(INFO, socketFd, "Got HEAD request");
                 break;
             default:
                 LOG_CON(ERROR, socketFd,
@@ -216,6 +238,7 @@ int http_readRequest(int socketFd, HttpRequest* request)
         LOG_CON(ERROR, socketFd, "Could not read URL for HTTP requst\n");
         return -1;
     }
+    LOG_CON(INFO, socketFd, "Read URL");
     EXPECT('H', c, socketFd);
     EXPECT('T', c, socketFd);
     EXPECT('T', c, socketFd);
@@ -251,23 +274,36 @@ int http_processGetHead(int socketFd, HttpRequest* request)
         PANIC("Requested url malformed");
     }
     path[pathLength] = 0;
-    fprintf(stderr, "Requested '%s'\n", path);
+    memset(&fileState, 0, sizeof(&fileState));
+    if(0 != stat(path, &fileState))
+    {
+        http_sendResponseStatus(socketFd, 404);
+        http_terminateRequest(socketFd);
+        close(socketFd);
+        PANIC("Requested resource not found");
+    }
     if(0 != http_sendResponseStatus(socketFd, 200))
     {
         close(socketFd);
         PANIC("Could not send HTTP response");
     }
-    if(0 != http_sendHeader("Content-Type", "text/html; charset=UTF-8"))
+    if(0 !=
+         http_sendHeader(socketFd, "Content-Type", "text/html; charset=UTF-8"))
     {
         close(socketFd);
         PANIC("Could not send HTTP response");
     }
+    return 0;
 }
 /*----------------------------------------------------------------------------*/
 void http_accept(int socketFd, int timeoutSecs)
 {
+    /* Init request structure */
     HttpRequest* request = malloc(sizeof(HttpRequest));
     memset((void *)request, 0, sizeof(HttpRequest));
+    char* urlBuffer = malloc(128);
+    request->url = &urlBuffer;
+    request->urlMaxLength = 128;
     LOG_CON(INFO, socketFd, "New HTTP request incoming");
     if( 0 != http_readRequest(socketFd, request))
     {
@@ -281,10 +317,10 @@ void http_accept(int socketFd, int timeoutSecs)
             http_processGetHead(socketFd, request);
             break;
         case OTHER:
-        http_sendResponseStatus(socketFd, 405);
-        close(socketFd);
-        LOG_CON(WARN, socketFd, "Unsupported request type");
-        PANIC("Bad request");
+            http_sendResponseStatus(socketFd, 405);
+            close(socketFd);
+            LOG_CON(WARN, socketFd, "Unsupported request type");
+            PANIC("Bad request");
         default:
             assert(! "SHOULD NEVER HAPPEND");
     }

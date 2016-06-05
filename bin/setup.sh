@@ -46,7 +46,7 @@ function setup_root_directory {
 }
 
 
-parse_arguments
+parse_arguments $*
 check_root
 setup_user
 setup_executable

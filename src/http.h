@@ -74,7 +74,7 @@ char *http_message    (int statusCode);
 /*----------------------------------------------------------------------------*/
 int http_sendResponseStatus (int socketFd, int statusCode);
 /*----------------------------------------------------------------------------*/
-int http_sendHeader   (char* key, char* value);
+int http_sendHeader   (int socketFd, char* key, char* value);
 /*----------------------------------------------------------------------------*/
 int http_processGet   (int socketFd, ssize_t readBytes,
                        char** headerKeys,char** headerValues,
