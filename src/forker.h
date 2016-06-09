@@ -47,6 +47,6 @@
 #include "utils.h"
 /*----------------------------------------------------------------------------*/
 void forker_stop(int signal);
-void forker_listen(int socketFd, void (* acceptor)(int, int));
+void forker_listen(int socketFd, void (* acceptor)(int, int, int));
 /*----------------------------------------------------------------------------*/
 #endif

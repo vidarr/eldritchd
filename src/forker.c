@@ -35,6 +35,7 @@
 #include "forker.h"
 /*----------------------------------------------------------------------------*/
 static int keepListening = 1;
+static int keepAlive = 1;
 static int timeoutSecs = DEFAULT_TIMEOUT_SECS;
 /*----------------------------------------------------------------------------*/
 void forker_stop(int signal) {
@@ -46,7 +47,7 @@ void forker_stop(int signal) {
 static int descriptors[MAX_DESCRIPTORS];
 static int timeoutEpocs[MAX_DESCRIPTORS];
 static int acceptSocket;
-void (* acceptor)(int socketFd, int timeoutSecs) = NULL;
+void (* acceptor)(int socketFd, int timeoutSecs, int keepAlive) = NULL;
 /*----------------------------------------------------------------------------*/
 /**
  * Walks through the list of open file descriptors, clears those timed out
@@ -107,7 +108,7 @@ void processFileDescriptors(fd_set *descriptorSet) {
             if(0 == pid) {
                 /* I am the child */
                 close(acceptSocket);
-                acceptor(readySocket, timeoutSecs);
+                acceptor(readySocket, timeoutSecs, keepAlive);
                 exit(0);
             }
             /* I am still the parent */
@@ -197,7 +198,7 @@ void forker_loopRead(void) {
     closeDescriptors();
 }
 /*----------------------------------------------------------------------------*/
-void forker_listen(int socketFd, void (*acceptorFunc)(int, int)) {
+void forker_listen(int socketFd, void (*acceptorFunc)(int, int, int)) {
     struct sigaction sigchildNoWait = {
         .sa_handler = SIG_DFL,
         .sa_flags = SA_NOCLDWAIT

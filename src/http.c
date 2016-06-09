@@ -54,9 +54,12 @@ static int socketFd = 0;
 /*----------------------------------------------------------------------------*/
 #define HEADER_CONTENT_LENGTH "Content-Length"
 #define HEADER_MIME_TYPE      "Content-Type"
+#define HEADER_CONNECTION     "Connection"
 /*----------------------------------------------------------------------------*/
 #define MIME_TYPE_DEFAULT     "text/html; charset=UTF-8"
 #define MIME_TYPE_DEFAULT_LENGTH strlen(MIME_TYPE_DEFAULT)
+/*----------------------------------------------------------------------------*/
+#define CONNECTION_KEEP_ALIVE "Keep-alive"
 /*----------------------------------------------------------------------------*/
 char *http_message(int statusCode)
 {
@@ -105,41 +108,40 @@ int readFileIntoBuffer(char* fileBuffer, size_t fileLength, char* path)
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-#define SEND(socket, data, length)               \
+#define SEND(data, length)                       \
     do {                                         \
         if(BUF_SIZE <= length)                   \
         {                                        \
-            perror("While sending: line exceeding limit\n"); \
+            LOG_CON(ERROR, socketFd, "While sending: line exceeding limit\n"); \
             return -1;                           \
         }                                        \
-        if(length != send(socket, data, length, 0)) \
+        if(length != send(socketFd, data, length, 0)) \
         {                                        \
             return -1;                           \
         }                                        \
     } while(0)
 /*----------------------------------------------------------------------------*/
-int http_sendResponseStatus(int socketFd, int statusCode)
+int http_sendResponseStatus(int statusCode)
 {
     int   numPrinted;
     numPrinted = snprintf(readBuffer, BUF_SIZE, "HTTP/1.0 %3i %s" CRLF,
             statusCode, http_message(statusCode));
     readBuffer[BUF_SIZE] = 0;
-    printf("%i    - '%s'\n", numPrinted, readBuffer);
-    SEND(socketFd, readBuffer, numPrinted);
+    SEND(readBuffer, numPrinted);
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-int http_sendHeader(int socketFd, char* key, char* value)
+int http_sendHeader(char* key, char* value)
 {
     int   numPrinted;
     numPrinted = snprintf(readBuffer, BUF_SIZE, "%s: %s" CRLF,
             key, value);
     readBuffer[BUF_SIZE] = 0;
-    SEND(socketFd, readBuffer, numPrinted);
+    SEND(readBuffer, numPrinted);
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-int http_terminateRequest(int socketFd)
+int http_terminateRequest()
 {
     static char* crlf = CRLF;
     return 2 != send(socketFd, crlf, 2, 0);
@@ -147,12 +149,12 @@ int http_terminateRequest(int socketFd)
 /*----------------------------------------------------------------------------*/
 #define CONVERT_BUFFER_LENGTH (sizeof(size_t) + 1)
 /*----------------------------------------------------------------------------*/
-int http_sendBuffer(int socketFd, int statusCode,
+int http_sendBuffer(int statusCode,
                     char* mimeType, size_t mimeTypeLength,
                     char* body, size_t bodyLength)
 {
     static char convertBuffer[CONVERT_BUFFER_LENGTH];
-    if(0 > http_sendResponseStatus(socketFd, statusCode))
+    if(0 > http_sendResponseStatus(statusCode))
     {
         return -1;
     }
@@ -161,26 +163,31 @@ int http_sendBuffer(int socketFd, int statusCode,
         LOG_CON(ERROR, socketFd, "Could not convert body length");
         return -1;
     }
-    if(0 > http_sendHeader(socketFd, HEADER_CONTENT_LENGTH, convertBuffer))
+    if(0 > http_sendHeader(HEADER_CONTENT_LENGTH, convertBuffer))
     {
         LOG_CON(ERROR, socketFd, "Could not send Content-Length");
         return -1;
     }
-    if(0 > http_sendHeader(socketFd, HEADER_MIME_TYPE, mimeType))
+    if(0 > http_sendHeader(HEADER_CONNECTION, CONNECTION_KEEP_ALIVE))
+    {
+        LOG_CON(ERROR, socketFd, "Could not send Connnection-parameters");
+        return -1;
+    }
+    if(0 > http_sendHeader(HEADER_MIME_TYPE, mimeType))
     {
         LOG_CON(ERROR, socketFd, "Could not send Mime-Type");
         return -1;
     }
     if(0 != body)
     {
-        if(0 > http_terminateRequest(socketFd))
+        if(0 > http_terminateRequest())
         {
             LOG_CON(ERROR, socketFd, "Error during transmission");
             return -1;
         }
-        SEND(socketFd, body, bodyLength);
+        SEND(body, bodyLength);
     }
-    if(0 > http_terminateRequest(socketFd))
+    if(0 > http_terminateRequest())
     {
         LOG_CON(ERROR, socketFd, "Could not terminate header");
         return -1;
@@ -190,11 +197,11 @@ int http_sendBuffer(int socketFd, int statusCode,
 /*----------------------------------------------------------------------------*/
 #undef CONVERT_BUFFER_LENGTH
 /*----------------------------------------------------------------------------*/
-void http_sendDefaultResponse(int socketFd, int statusCode)
+void http_sendDefaultResponse(int statusCode)
 {
     char* message = http_message(statusCode);
     if(0 != message) {
-        if(0 > http_sendBuffer(socketFd, statusCode,
+        if(0 > http_sendBuffer(statusCode,
                                MIME_TYPE_DEFAULT, MIME_TYPE_DEFAULT_LENGTH,
                                message, strlen(message)) )
         {
@@ -203,7 +210,7 @@ void http_sendDefaultResponse(int socketFd, int statusCode)
     }
 }
 /*----------------------------------------------------------------------------*/
-#define NEXT_CHAR(c, socketFd)                           \
+#define NEXT_CHAR(c)                                     \
     do {                                                 \
         errno = 0;                                       \
         if(readBufferDataBeginIndex == readBufferDataEndIndex) \
@@ -211,7 +218,7 @@ void http_sendDefaultResponse(int socketFd, int statusCode)
             readBufferDataEndIndex = read(socketFd, readBuffer, BUF_SIZE);   \
             if(-1 == readBufferDataEndIndex)             \
             {                                            \
-                perror(strerror(errno));                 \
+                LOG_CON(ERROR, socketFd, strerror(errno)); \
                 return -1;                               \
             }                                            \
             readBufferDataBeginIndex = 0;                \
@@ -219,9 +226,9 @@ void http_sendDefaultResponse(int socketFd, int statusCode)
         c = readBuffer[readBufferDataBeginIndex++];      \
     } while(0)
 /*----------------------------------------------------------------------------*/
-#define EXPECT(expectedChar, c, socketFd)                \
+#define EXPECT(expectedChar, c)                          \
     do {                                                 \
-        NEXT_CHAR(c, socketFd);                          \
+        NEXT_CHAR(c);                          \
         if(toupper(c) != expectedChar)                   \
         {                                                \
             LOG(WARN,                                    \
@@ -237,11 +244,11 @@ void http_sendDefaultResponse(int socketFd, int statusCode)
  * Reallocs buffer if necessary.
  * Returns the last char read (i.e. either SPACE, CR, LF) or 0 on error.
  */
-static char getToken(int socketFd, char** buffer, size_t* bufferLength)
+static char getToken(char** buffer, size_t* bufferLength)
 {
     size_t writeIndex = 0;
     char c;
-    NEXT_CHAR(c, socketFd);
+    NEXT_CHAR(c);
     while( (SPACE != c) && (CR != c) && (LF != c) )
     {
         if(writeIndex >= *bufferLength - 2)
@@ -259,13 +266,13 @@ static char getToken(int socketFd, char** buffer, size_t* bufferLength)
         }
         (*buffer)[writeIndex] = c;
         writeIndex++;
-        NEXT_CHAR(c, socketFd);
+        NEXT_CHAR(c);
     }
     (*buffer)[writeIndex] = 0;
     return c;
 }
 /*----------------------------------------------------------------------------*/
-int http_readRequest(int socketFd, HttpRequest* request)
+int http_readRequest(HttpRequest* request)
 {
         /*
          * Request constitutes of
@@ -275,36 +282,38 @@ int http_readRequest(int socketFd, HttpRequest* request)
          * CRLF
          * Body
          */
-    signed char c;
+    signed char c = 0;
     enum { BEFORE, READING, DONE }   readingState = BEFORE;
     /* Read method */
     while(DONE != readingState)
     {
-        NEXT_CHAR(c, socketFd);
+        NEXT_CHAR(c);
+        printf("FIRST CHAR  %x  %c\n", c, c);
+        printf("'%128s'\n", readBuffer);
         switch( toupper(c) )
         {
             case LF:
             case CR:
                 if(BEFORE != readingState)
                 {
-                    LOG(ERROR, "Premature end of HTTP request\n");
+                    LOG_CON(ERROR, socketFd, "Premature end of HTTP request\n");
                     return -1;
                 }
                 break;
             case 'G':
                 request->type = GET;
-                EXPECT('E', c, socketFd);
-                EXPECT('T', c, socketFd);
-                EXPECT(SPACE, c, socketFd);
+                EXPECT('E', c);
+                EXPECT('T', c);
+                EXPECT(SPACE, c);
                 readingState = DONE;
                 LOG_CON(INFO, socketFd, "Got GET request");
                 break;
             case 'H':
                 request->type = HEAD;
-                EXPECT('E', c, socketFd);
-                EXPECT('A', c, socketFd);
-                EXPECT('D', c, socketFd);
-                EXPECT(SPACE, c, socketFd);
+                EXPECT('E', c);
+                EXPECT('A', c);
+                EXPECT('D', c);
+                EXPECT(SPACE, c);
                 readingState = DONE;
                 LOG_CON(INFO, socketFd, "Got HEAD request");
                 break;
@@ -315,21 +324,21 @@ int http_readRequest(int socketFd, HttpRequest* request)
                 return -1;
         };
     };
-    if(SPACE != getToken(socketFd, request->url, &request->urlMaxLength) )
+    if(SPACE != getToken(request->url, &request->urlMaxLength) )
     {
         LOG_CON(ERROR, socketFd, "Could not read URL for HTTP requst\n");
         return -1;
     }
     LOG_CON(INFO, socketFd, "Read URL");
-    EXPECT('H', c, socketFd);
-    EXPECT('T', c, socketFd);
-    EXPECT('T', c, socketFd);
-    EXPECT('P', c, socketFd);
-    EXPECT('/', c, socketFd);
-    NEXT_CHAR(request->majVersion, socketFd);
-    EXPECT('.', c, socketFd);
-    NEXT_CHAR(request->minVersion, socketFd);
-    EXPECT(CR, c, socketFd);
+    EXPECT('H', c);
+    EXPECT('T', c);
+    EXPECT('T', c);
+    EXPECT('P', c);
+    EXPECT('/', c);
+    NEXT_CHAR(request->majVersion);
+    EXPECT('.', c);
+    NEXT_CHAR(request->minVersion);
+    EXPECT(CR, c);
     /* Line should be terminated by CRLF, but LF might be missing */
     return 0;
 }
@@ -337,7 +346,7 @@ int http_readRequest(int socketFd, HttpRequest* request)
 #undef NEXT_CHAR
 #undef EXPECT
 /*----------------------------------------------------------------------------*/
-int http_processGetHead(int socketFd, HttpRequest* request)
+int http_processGetHead(HttpRequest* request)
 {
     char* fileBuffer = 0;
     size_t fileLength = 0;
@@ -357,7 +366,7 @@ int http_processGetHead(int socketFd, HttpRequest* request)
     memset(&fileState, 0, sizeof(&fileState));
     if(0 != stat(path, &fileState))
     {
-        http_sendDefaultResponse(socketFd, 404);
+        http_sendDefaultResponse(404);
         close(socketFd);
         PANIC("Requested resource not found");
     }
@@ -373,7 +382,7 @@ int http_processGetHead(int socketFd, HttpRequest* request)
         }
         if( 0 > readFileIntoBuffer(fileBuffer, fileLength, path))
         {
-            http_sendDefaultResponse(socketFd, 404);
+            http_sendDefaultResponse(404);
             free(fileBuffer);
             close(socketFd);
             PANIC("Requested resource not found");
@@ -381,7 +390,7 @@ int http_processGetHead(int socketFd, HttpRequest* request)
         fileBuffer[fileLength] = 0;
         fileLength = strnlen(fileBuffer, fileLength) + 1;
     }
-    if(0 != http_sendBuffer(socketFd, 200,
+    if(0 != http_sendBuffer(200,
                             MIME_TYPE_DEFAULT,  MIME_TYPE_DEFAULT_LENGTH,
                             fileBuffer, fileLength))
     {
@@ -393,7 +402,7 @@ int http_processGetHead(int socketFd, HttpRequest* request)
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-void http_accept(int conSocket, int timeoutSecs)
+void http_accept(int conSocket, int timeoutSecs, int keepAlive)
 {
     /* Init request structure */
     HttpRequest* request = malloc(sizeof(HttpRequest));
@@ -403,25 +412,36 @@ void http_accept(int conSocket, int timeoutSecs)
     request->url = &urlBuffer;
     request->urlMaxLength = 128;
     LOG_CON(INFO, socketFd, "New HTTP request incoming");
-    if( 0 != http_readRequest(socketFd, request))
+    /* Set timeout on socket */
+    if(0 > setSocketTimeout(socketFd, timeoutSecs))
     {
+        LOG_CON(ERROR, socketFd, "Could not set timeout on client socket");
         close(socketFd);
-        PANIC("Something wrong with the HTTP header");
+        PANIC("Could not timeout on socket");
     }
-    switch(request->type)
+    do
     {
-        case GET:
-        case HEAD:
-            http_processGetHead(socketFd, request);
-            break;
-        case OTHER:
-            http_sendDefaultResponse(socketFd, 405);
+        if( 0 != http_readRequest(request))
+        {
+            LOG_CON(socketFd, ERROR, strerror(errno));
             close(socketFd);
-            LOG_CON(WARN, socketFd, "Unsupported request type");
-            PANIC("Bad request");
-        default:
-            assert(! "SHOULD NEVER HAPPEND");
-    }
+            PANIC("Something wrong with the HTTP header");
+        }
+        switch(request->type)
+        {
+            case GET:
+            case HEAD:
+                http_processGetHead(request);
+                break;
+            case OTHER:
+                http_sendDefaultResponse(405);
+                close(socketFd);
+                LOG_CON(WARN, socketFd, "Unsupported request type");
+                PANIC("Bad request");
+            default:
+                assert(! "SHOULD NEVER HAPPEND");
+        }
+    }while(keepAlive);
     close(socketFd);
 }
 /*----------------------------------------------------------------------------*/

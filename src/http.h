@@ -70,20 +70,7 @@ typedef struct
     char** headerValues;
 } HttpRequest;
 /*----------------------------------------------------------------------------*/
-char *http_message    (int statusCode);
-/*----------------------------------------------------------------------------*/
-int http_sendResponseStatus (int socketFd, int statusCode);
-/*----------------------------------------------------------------------------*/
-int http_sendHeader   (int socketFd, char* key, char* value);
-/*----------------------------------------------------------------------------*/
-int http_processGet   (int socketFd, ssize_t readBytes,
-                       char** headerKeys,char** headerValues,
-                       char** body, size_t* bodyLen);
-/*----------------------------------------------------------------------------*/
-int http_readRequest  (int socketFd,
-                       HttpRequest* request);
-/*----------------------------------------------------------------------------*/
-void http_accept      (int socketFd, int timeoutSecs);
+void http_accept      (int socketFd, int timeoutSecs, int keepAlive);
 /*----------------------------------------------------------------------------*/
 #endif
 

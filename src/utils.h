@@ -39,7 +39,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <time.h>
-/*----------------------------------------------------------------------------*/
+    /*----------------------------------------------------------------------------*/
 #define PANIC(msg)                    \
     do {                              \
         fprintf(stderr, "%s\n", msg); \
@@ -81,4 +81,5 @@ extern char buffer[BUFFER_LENGTH];
 /*----------------------------------------------------------------------------*/
 void logMsg(int priority, int sockfd, char *message, size_t length);
 /*----------------------------------------------------------------------------*/
+int setSocketTimeout(int fd, int timeoutSecs);
 #endif

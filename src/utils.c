@@ -35,6 +35,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 /*----------------------------------------------------------------------------*/
 char* sockaddrToString(struct sockaddr* addr)
 {
@@ -121,5 +122,29 @@ void logMsg(int priority, int sockfd, char* message, size_t length) {
                 strTime, priorityString,
                 message, sockaddrToString(&addr));
     }
+}
+/*----------------------------------------------------------------------------*/
+int setSocketTimeout(int fd, int timeoutSecs)
+{
+    int opts = 0;
+    struct timeval tv;
+    tv.tv_sec = timeoutSecs;
+    tv.tv_usec = 0;
+    opts = fcntl(fd, F_GETFL);
+    if(0 > opts)
+    {
+        return -1;
+    }
+    opts = opts & (~ O_NONBLOCK);
+    if(0 > fcntl(fd, F_SETFL, opts))
+    {
+        return -1;
+    }
+    if( (0 > setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) ) ||
+        (0 > setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) ) )
+    {
+        return -1;
+    }
+    return 0;
 }
 /*----------------------------------------------------------------------------*/

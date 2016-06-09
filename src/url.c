@@ -38,7 +38,6 @@
 /*----------------------------------------------------------------------------*/
 #define RETURN_OK do{ \
      *pathLength = readIndex - startIndex; \
-     printf("Found:   '%s'\nlength: %i\n", *path, *pathLength);     \
     return 0;}while(0)
 /*----------------------------------------------------------------------------*/
 int url_getPath (char* url, size_t urlMaxLength,
@@ -59,11 +58,9 @@ int url_getPath (char* url, size_t urlMaxLength,
            (0 != readChar) )
     {
         readChar = url[readIndex];
-        printf("At position %i ( '%c' )\n", readIndex, readChar);
         switch(state)
         {
             case PATH_OR_SCHEME:
-                printf("PATH_OR_SCHEME\n");
                 switch(readChar)
                 {
                     case ':':
@@ -79,7 +76,6 @@ int url_getPath (char* url, size_t urlMaxLength,
                 };
                 break;
             case SCHEME_OR_PORT:
-                printf("SCHEME_OR_PORT\n");
                 switch(readChar)
                 {
                     case '/':
@@ -91,7 +87,6 @@ int url_getPath (char* url, size_t urlMaxLength,
                 }
                 break;
             case PORT:
-                printf("PORT\n");
                 switch(readChar)
                 {
                     case '/':
@@ -104,7 +99,6 @@ int url_getPath (char* url, size_t urlMaxLength,
                 };
                 break;
             case FIRST_SLASH:
-                printf("FIRST_SLASH\n");
                 switch(readChar)
                 {
                     case '/':
@@ -115,11 +109,9 @@ int url_getPath (char* url, size_t urlMaxLength,
                 };
                 break;
             case SECOND_SLASH:
-                printf("SECOND_SLASH\n");
                 state = SERVER;
                 break;
             case SERVER:
-                printf("SERVER\n");
                 if('/' == readChar)
                 {
                     state = PATH;
@@ -128,7 +120,6 @@ int url_getPath (char* url, size_t urlMaxLength,
                 }
                 break;
             case PATH:
-                printf("PATH\n");
                 switch(readChar)
                 {
                     case '#':
@@ -148,7 +139,6 @@ int url_getPath (char* url, size_t urlMaxLength,
     {
         RETURN_OK;
     }
-    printf("Did not find\n");
     RETURN_FAIL;
 }
 /*----------------------------------------------------------------------------*/
