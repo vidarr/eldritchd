@@ -50,6 +50,13 @@ static char* readBuffer = buffer1;
 static size_t readBufferDataEndIndex = 0;
 static size_t readBufferDataBeginIndex = 0;
 static struct stat fileState;
+static int socketFd = 0;
+/*----------------------------------------------------------------------------*/
+#define HEADER_CONTENT_LENGTH "Content-Length"
+#define HEADER_MIME_TYPE      "Content-Type"
+/*----------------------------------------------------------------------------*/
+#define MIME_TYPE_DEFAULT     "text/html; charset=UTF-8"
+#define MIME_TYPE_DEFAULT_LENGTH strlen(MIME_TYPE_DEFAULT)
 /*----------------------------------------------------------------------------*/
 char *http_message(int statusCode)
 {
@@ -72,6 +79,30 @@ char *http_message(int statusCode)
             }
     };
     return UNKNOWN_ERROR_STR;
+}
+/*----------------------------------------------------------------------------*/
+int readFileIntoBuffer(char* fileBuffer, size_t fileLength, char* path)
+{
+    ssize_t readBytes = 0;
+    int fd = open(path, O_RDONLY);
+    if(0 > fd)
+    {
+        LOG_CON(ERROR, socketFd, strerror(errno));
+        return -1;
+    }
+    readBytes = read(fd, fileBuffer, fileLength);
+    close(fd);
+    if(fileLength > readBytes)
+    {
+        if(0 > readBytes)
+        {
+            LOG_CON(ERROR, socketFd, strerror(errno));
+        } else {
+            LOG_CON(ERROR, socketFd, "File size unexpected ?");
+        }
+        return -1;
+    }
+    return 0;
 }
 /*----------------------------------------------------------------------------*/
 #define SEND(socket, data, length)               \
@@ -108,17 +139,68 @@ int http_sendHeader(int socketFd, char* key, char* value)
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-int http_terminateRequest(socketFd)
+int http_terminateRequest(int socketFd)
 {
     static char* crlf = CRLF;
     return 2 != send(socketFd, crlf, 2, 0);
 }
 /*----------------------------------------------------------------------------*/
-int http_processGet(int socketFd, ssize_t readBytes,
-                 char** headerKeys,char** headerValues,
-                 char** body, size_t* bodyLen)
+#define CONVERT_BUFFER_LENGTH (sizeof(size_t) + 1)
+/*----------------------------------------------------------------------------*/
+int http_sendBuffer(int socketFd, int statusCode,
+                    char* mimeType, size_t mimeTypeLength,
+                    char* body, size_t bodyLength)
 {
-    return -1;
+    static char convertBuffer[CONVERT_BUFFER_LENGTH];
+    if(0 > http_sendResponseStatus(socketFd, statusCode))
+    {
+        return -1;
+    }
+    if(0 > snprintf(convertBuffer, CONVERT_BUFFER_LENGTH, "%i",bodyLength))
+    {
+        LOG_CON(ERROR, socketFd, "Could not convert body length");
+        return -1;
+    }
+    if(0 > http_sendHeader(socketFd, HEADER_CONTENT_LENGTH, convertBuffer))
+    {
+        LOG_CON(ERROR, socketFd, "Could not send Content-Length");
+        return -1;
+    }
+    if(0 > http_sendHeader(socketFd, HEADER_MIME_TYPE, mimeType))
+    {
+        LOG_CON(ERROR, socketFd, "Could not send Mime-Type");
+        return -1;
+    }
+    if(0 != body)
+    {
+        if(0 > http_terminateRequest(socketFd))
+        {
+            LOG_CON(ERROR, socketFd, "Error during transmission");
+            return -1;
+        }
+        SEND(socketFd, body, bodyLength);
+    }
+    if(0 > http_terminateRequest(socketFd))
+    {
+        LOG_CON(ERROR, socketFd, "Could not terminate header");
+        return -1;
+    }
+    return 0;
+}
+/*----------------------------------------------------------------------------*/
+#undef CONVERT_BUFFER_LENGTH
+/*----------------------------------------------------------------------------*/
+void http_sendDefaultResponse(int socketFd, int statusCode)
+{
+    char* message = http_message(statusCode);
+    if(0 != message) {
+        if(0 > http_sendBuffer(socketFd, statusCode,
+                               MIME_TYPE_DEFAULT, MIME_TYPE_DEFAULT_LENGTH,
+                               message, strlen(message)) )
+        {
+            LOG_CON(ERROR, socketFd, "Could not send reply");
+        }
+    }
 }
 /*----------------------------------------------------------------------------*/
 #define NEXT_CHAR(c, socketFd)                           \
@@ -257,6 +339,8 @@ int http_readRequest(int socketFd, HttpRequest* request)
 /*----------------------------------------------------------------------------*/
 int http_processGetHead(int socketFd, HttpRequest* request)
 {
+    char* fileBuffer = 0;
+    size_t fileLength = 0;
     char* path = 0;
     size_t pathLength = 0;
     if( (0 != url_getPath(*(request->url), request->urlMaxLength,
@@ -266,10 +350,6 @@ int http_processGetHead(int socketFd, HttpRequest* request)
         snprintf(buffer, BUFFER_LENGTH,
                  "Requested url '%s' malformed\n", request->url);
         LOG_CON(ERROR, socketFd, buffer);
-        if(0 != http_sendResponseStatus(socketFd, 200))
-        {
-            LOG_CON(ERROR, socketFd, strerror(errno));
-        }
         close(socketFd);
         PANIC("Requested url malformed");
     }
@@ -277,29 +357,47 @@ int http_processGetHead(int socketFd, HttpRequest* request)
     memset(&fileState, 0, sizeof(&fileState));
     if(0 != stat(path, &fileState))
     {
-        http_sendResponseStatus(socketFd, 404);
-        http_terminateRequest(socketFd);
+        http_sendDefaultResponse(socketFd, 404);
         close(socketFd);
         PANIC("Requested resource not found");
     }
-    if(0 != http_sendResponseStatus(socketFd, 200))
+    fileLength = fileState.st_size;
+    if(GET == request->type)
     {
+        fileBuffer = malloc(fileLength + 1);
+        if(0 == fileBuffer)
+        {
+            LOG_CON(ERROR, socketFd, "Could not allocate memory");
+            close(socketFd);
+            PANIC("Could not allocate memory");
+        }
+        if( 0 > readFileIntoBuffer(fileBuffer, fileLength, path))
+        {
+            http_sendDefaultResponse(socketFd, 404);
+            free(fileBuffer);
+            close(socketFd);
+            PANIC("Requested resource not found");
+        }
+        fileBuffer[fileLength] = 0;
+        fileLength = strnlen(fileBuffer, fileLength) + 1;
+    }
+    if(0 != http_sendBuffer(socketFd, 200,
+                            MIME_TYPE_DEFAULT,  MIME_TYPE_DEFAULT_LENGTH,
+                            fileBuffer, fileLength))
+    {
+        free(fileBuffer);
         close(socketFd);
         PANIC("Could not send HTTP response");
     }
-    if(0 !=
-         http_sendHeader(socketFd, "Content-Type", "text/html; charset=UTF-8"))
-    {
-        close(socketFd);
-        PANIC("Could not send HTTP response");
-    }
+    free(fileBuffer);
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-void http_accept(int socketFd, int timeoutSecs)
+void http_accept(int conSocket, int timeoutSecs)
 {
     /* Init request structure */
     HttpRequest* request = malloc(sizeof(HttpRequest));
+    socketFd = conSocket;
     memset((void *)request, 0, sizeof(HttpRequest));
     char* urlBuffer = malloc(128);
     request->url = &urlBuffer;
@@ -317,7 +415,7 @@ void http_accept(int socketFd, int timeoutSecs)
             http_processGetHead(socketFd, request);
             break;
         case OTHER:
-            http_sendResponseStatus(socketFd, 405);
+            http_sendDefaultResponse(socketFd, 405);
             close(socketFd);
             LOG_CON(WARN, socketFd, "Unsupported request type");
             PANIC("Bad request");
