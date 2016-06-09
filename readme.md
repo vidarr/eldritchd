@@ -1,3 +1,7 @@
+# Overview
+
+eldritchd is a simple, minimalistic HTTP daemon.
+
 # Licensing
 
 With the exception of CuTest ( http://cutest.sourceforge.net ), all code
