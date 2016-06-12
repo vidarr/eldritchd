@@ -57,6 +57,8 @@
 #define CLIENT_ERROR_STR  "CLIENT ERROR"
 #define UNKNOWN_ERROR_STR "UNKNOWN ERROR"
 /*----------------------------------------------------------------------------*/
+#define DEFAULT_FILE_NAME "/index.html"
+/*----------------------------------------------------------------------------*/
 typedef struct
 {
     enum {GET, HEAD, OTHER} type;

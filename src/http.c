@@ -110,11 +110,6 @@ int readFileIntoBuffer(char* fileBuffer, size_t fileLength, char* path)
 /*----------------------------------------------------------------------------*/
 #define SEND(data, length)                       \
     do {                                         \
-        if(BUF_SIZE <= length)                   \
-        {                                        \
-            LOG_CON(ERROR, socketFd, "While sending: line exceeding limit\n"); \
-            return -1;                           \
-        }                                        \
         if(length != send(socketFd, data, length, 0)) \
         {                                        \
             return -1;                           \
@@ -282,14 +277,15 @@ int http_readRequest(HttpRequest* request)
          * CRLF
          * Body
          */
+    enum {None, Cr1, Lf1, Cr2, Lf2} crLfReadingState;
+    int numCrLf = 0;
     signed char c = 0;
-    enum { BEFORE, READING, DONE }   readingState = BEFORE;
+    signed char c2 = 0;
+    enum { BEFORE, READING, DONE }  readingState = BEFORE;
     /* Read method */
     while(DONE != readingState)
     {
         NEXT_CHAR(c);
-        printf("FIRST CHAR  %x  %c\n", c, c);
-        printf("'%128s'\n", readBuffer);
         switch( toupper(c) )
         {
             case LF:
@@ -339,6 +335,43 @@ int http_readRequest(HttpRequest* request)
     EXPECT('.', c);
     NEXT_CHAR(request->minVersion);
     EXPECT(CR, c);
+    EXPECT(LF, c);
+    crLfReadingState = Lf1;
+    /* Read until end of header */
+    while(Lf2 != crLfReadingState)
+    {
+        NEXT_CHAR(c);
+        if(CR == c)
+        {
+            if(Lf1 == crLfReadingState)
+            {
+                crLfReadingState = Cr2;
+            }
+            else
+            {
+                crLfReadingState = Cr1;
+            }
+        }
+        else if(LF == c)
+        {
+            if(Cr1 == crLfReadingState)
+            {
+                crLfReadingState = Lf1;
+            }
+            else if(Cr2 == crLfReadingState)
+            {
+                crLfReadingState = Lf2;
+            }
+            else
+            {
+                crLfReadingState = None;
+            }
+        }
+        else
+        {
+            crLfReadingState = None;
+        }
+    }
     /* Line should be terminated by CRLF, but LF might be missing */
     return 0;
 }
@@ -363,6 +396,10 @@ int http_processGetHead(HttpRequest* request)
         PANIC("Requested url malformed");
     }
     path[pathLength] = 0;
+    if( ('/' == path[0]) && (0 == path[1]) )
+    {
+        path = DEFAULT_FILE_NAME;
+    }
     memset(&fileState, 0, sizeof(&fileState));
     if(0 != stat(path, &fileState))
     {
