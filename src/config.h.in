@@ -34,6 +34,9 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 /*----------------------------------------------------------------------------*/
+#define ELDRITCH_NAME         "Eldritch"
+#define ELDRITCH_URL          "https://github.com/vidarr/eldritchd"
+/*----------------------------------------------------------------------------*/
 #define VERSION_MAJOR @eldritch_VERSION_MAJOR@
 #define VERSION_MINOR @eldritch_VERSION_MINOR@
 #define VERSION_PATCH @eldritch_VERSION_PATCH@

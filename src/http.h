@@ -57,6 +57,9 @@
 #define CLIENT_ERROR_STR  "CLIENT ERROR"
 #define UNKNOWN_ERROR_STR "UNKNOWN ERROR"
 /*----------------------------------------------------------------------------*/
+/**
+ * File to deliver in case of '/' requested
+ */
 #define DEFAULT_FILE_NAME "/index.html"
 /*----------------------------------------------------------------------------*/
 typedef struct

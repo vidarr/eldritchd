@@ -119,7 +119,7 @@ int readFileIntoBuffer(char* fileBuffer, size_t fileLength, char* path)
 int http_sendResponseStatus(int statusCode)
 {
     int   numPrinted;
-    numPrinted = snprintf(readBuffer, BUF_SIZE, "HTTP/1.0 %3i %s" CRLF,
+    numPrinted = snprintf(readBuffer, BUF_SIZE, "HTTP/1.1 %3i %s" CRLF,
             statusCode, http_message(statusCode));
     readBuffer[BUF_SIZE] = 0;
     SEND(readBuffer, numPrinted);
@@ -192,18 +192,32 @@ int http_sendBuffer(int statusCode,
 /*----------------------------------------------------------------------------*/
 #undef CONVERT_BUFFER_LENGTH
 /*----------------------------------------------------------------------------*/
+#define SEND_BUF_LENGTH 1024
+/*----------------------------------------------------------------------------*/
 void http_sendDefaultResponse(int statusCode)
 {
+    static char sendBuffer[SEND_BUF_LENGTH + 1];
+    size_t messageLength = 0;
     char* message = http_message(statusCode);
     if(0 != message) {
+        messageLength = snprintf(sendBuffer, SEND_BUF_LENGTH + 1,
+                "<html>"
+                "<a href=\"" ELDRITCH_URL "\">"
+                ELDRITCH_NAME " %u.%u.%u-%u</a>"
+                "   reporting:<br><br>"
+                "<b>%u - %s</b></html>", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH,
+                BUILD_NUM, statusCode, message);
+        sendBuffer[SEND_BUF_LENGTH] = 0;
         if(0 > http_sendBuffer(statusCode,
                                MIME_TYPE_DEFAULT, MIME_TYPE_DEFAULT_LENGTH,
-                               message, strlen(message)) )
+                               sendBuffer, messageLength))
         {
             LOG_CON(ERROR, socketFd, "Could not send reply");
         }
     }
 }
+/*----------------------------------------------------------------------------*/
+#undef SEND_BUF_LENGTH
 /*----------------------------------------------------------------------------*/
 #define NEXT_CHAR(c)                                     \
     do {                                                 \
