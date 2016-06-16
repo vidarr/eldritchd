@@ -112,7 +112,7 @@ void logMsg(int priority, int sockfd, char* message, size_t length) {
         struct sockaddr addr;
         socklen_t addrLength = sizeof(addr);
         memset(&addr, addrLength, 0);
-        if(0 != getsockname(sockfd, &addr, &addrLength))
+        if(0 != getpeername(sockfd, &addr, &addrLength))
         {
             fprintf(out,
                     " [%30s] %5s - %50s\n", strTime, priorityString, message);
