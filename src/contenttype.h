@@ -31,23 +31,42 @@
  * GENCE  OR  OTHERWISE)  ARISING  IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __URL_H__
-#define __URL_H__
+#ifndef __CONTENTTYPE_H__
+#define __CONTENTTYPE_H__
 /*----------------------------------------------------------------------------*/
-#include <ctype.h>
-#include "config.h"
-#include "utils.h"
+#include <string.h>
 /*----------------------------------------------------------------------------*/
-#define FILE_EXTENSION_SEPARATOR '.'
+#define MAX_TYPE_STRING_LENGTH 255
+/*----------------------------------------------------------------------------*/
+typedef enum {
+    None, Base64
+} ContentEncoding;
+/*----------------------------------------------------------------------------*/
+typedef struct {
+  char* typeString;
+  ContentEncoding encoding;
+} ContentType;
+/*----------------------------------------------------------------------------*/
+ContentType* createContentType(
+        char* contentTypeString, ContentEncoding encoding);
+/*----------------------------------------------------------------------------*/
+void disposeContentType(ContentType* toDispose);
 /*----------------------------------------------------------------------------*/
 /**
- * Searches for path component of url, if found sets path to beginning of
- * path component and pathLength to the length of the path component thus that
- * path[pathLength] == 0 .
- * If found, returns 0, else -1.
+ * Initialize contenttype database
+ * @return 0 on success, -1 otherwise
  */
-int url_getPath     (char* url, size_t urlMaxLength,
-                     char** path, size_t* maxPathLength);
+int initializeContentTypeDb();
+/*----------------------------------------------------------------------------*/
+int closeContentTypeDb();
+/*----------------------------------------------------------------------------*/
+/**
+ * Find appropriate ContentType for file filePath
+ * Do not free the pointer returned!
+ * @param filePath path to file
+ * @param maxPathLength max length of filePath
+ * @return Pointer to a ContentType struct describing the contenttype assoc. with the file
+ */
+ContentType* getContentType(char* filePath, size_t maxPathLength);
 /*----------------------------------------------------------------------------*/
 #endif
-

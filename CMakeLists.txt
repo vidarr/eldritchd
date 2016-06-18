@@ -20,3 +20,4 @@ add_subdirectory("test")
 add_subdirectory("src")
 
 add_test(NAME testUrl COMMAND test_url)
+add_test(NAME testContentType COMMAND test_contenttype)

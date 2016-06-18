@@ -9,18 +9,22 @@ include_directories("${eldritch_BINARY_DIR}")
 set (
     eldritch_src_source_files
     forker.c
+    hash.c
     http.c
     utils.c
     url.c
+    contenttype.c
 )
 
 set (
     eldritch_src_header_files
     config.h
     forker.h
+    hash.h
     http.h
     utils.h
     url.h
+    contenttype.h
 )
 add_library(eldritch ${eldritch_src_source_files} ${eldritch_src_header_files})
 # add the executable
