@@ -45,6 +45,7 @@
 #include "authenticate.h"
 #include "forker.h"
 #include "http.h"
+#include "contenttype.h"
 /*----------------------------------------------------------------------------*/
 void sanitizeString(char *dest, char *src, size_t maxLen)
 {
@@ -206,8 +207,6 @@ int main(int argc, char** argv)
     port         = initializeString(DEFAULT_PORT);
     interface    = initializeString(DEFAULT_INTERFACE);
     documentRoot = initializeString(DEFAULT_DOCUMENT_ROOT);
-    userDb       = initializeString(DEFAULT_USER_DB);
-    rulesDb      = initializeString(DEFAULT_RULES_DB);
     while((c = getopt(argc, argv, "i:d:p:u:r:")) != EOF)
     {
         switch(c) {
@@ -234,17 +233,11 @@ int main(int argc, char** argv)
     "Starting Version %u.%u.%u Build %05u",
         VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, BUILD_NUM);
     LOG(INFO, buffer);
-    authenticate_loadDbs(userDb, rulesDb);
-    snprintf(buffer, BUFFER_LENGTH,
-             "Loaded user database from %s", userDb);
-    LOG(INFO, buffer);
-    snprintf(buffer, BUFFER_LENGTH,
-             "Loaded rules database from %s", rulesDb);
-    LOG(INFO, buffer);
-    memset(userDb, 0, MAX_OPT_STR_LEN);
-    memset(rulesDb, 0, MAX_OPT_STR_LEN);
-    free(userDb);
-    free(rulesDb);
+    if(0 != contenttype_initialize())
+    {
+      PANIC("Could not initialize ContentTypeDb");
+    }
+    LOG(INFO,"Initialized ContentType database");
     changeRoot(documentRoot);
     snprintf(buffer, BUFFER_LENGTH,
              "Chrooted to %s", documentRoot);
@@ -264,5 +257,6 @@ int main(int argc, char** argv)
     forker_listen(listenSocket, http_accept);
     LOG(INFO, "Closing listening socket");
     close(listenSocket);
+    contenttype_close();
     return 0;
 }

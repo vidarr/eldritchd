@@ -47,24 +47,25 @@ char* toBuffer(char* string)
 char* test_initContentDb()
 {
   mu_assert("ContentType db failed to initialize",
-             (0 == initializeContentTypeDb()));
+             (0 == contenttype_initialize()));
   return 0;
 }
 /*----------------------------------------------------------------------------*/
 char* test_closeContentDb()
 {
   mu_assert("ContentType db failed to initialize",
-             (0 == closeContentTypeDb()));
+             (0 == contenttype_close()));
   return 0;
 }
 /*----------------------------------------------------------------------------*/
 char* checkSingleContentType(char* path,
     char* typeString, ContentEncoding encoding)
 {
-  ContentType* type = getContentType(toBuffer(path), 255);
+  ContentType* type = contenttype_get(toBuffer(path), 255);
+  printf("got '%s', encoding == None ? %i\n", type->typeString, None == type->encoding);
   mu_assert("Wrong encoding for .h file", encoding == type->encoding);
   mu_assert("Wrong contentType",
-   strncmp(type->typeString, typeString, 255));
+   (0 == strncmp(type->typeString, typeString, 255)));
   return 0;
 }
 /*----------------------------------------------------------------------------*/

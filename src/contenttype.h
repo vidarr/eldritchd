@@ -47,18 +47,18 @@ typedef struct {
   ContentEncoding encoding;
 } ContentType;
 /*----------------------------------------------------------------------------*/
-ContentType* createContentType(
+ContentType* contenttype_create(
         char* contentTypeString, ContentEncoding encoding);
 /*----------------------------------------------------------------------------*/
-void disposeContentType(ContentType* toDispose);
+void contenttype_dispose(ContentType* toDispose);
 /*----------------------------------------------------------------------------*/
 /**
  * Initialize contenttype database
  * @return 0 on success, -1 otherwise
  */
-int initializeContentTypeDb();
+int contenttype_initialize();
 /*----------------------------------------------------------------------------*/
-int closeContentTypeDb();
+int contenttype_close();
 /*----------------------------------------------------------------------------*/
 /**
  * Find appropriate ContentType for file filePath
@@ -67,6 +67,6 @@ int closeContentTypeDb();
  * @param maxPathLength max length of filePath
  * @return Pointer to a ContentType struct describing the contenttype assoc. with the file
  */
-ContentType* getContentType(char* filePath, size_t maxPathLength);
+ContentType* contenttype_get(char* filePath, size_t maxPathLength);
 /*----------------------------------------------------------------------------*/
 #endif

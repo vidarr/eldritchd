@@ -37,6 +37,7 @@
 #include <sys/socket.h>
 #include "http.h"
 #include "url.h"
+#include "contenttype.h"
 /*----------------------------------------------------------------------------*/
 #define CRLF "\r\n"
 #define CR    '\r'
@@ -53,11 +54,10 @@ static struct stat fileState;
 static int socketFd = 0;
 /*----------------------------------------------------------------------------*/
 #define HEADER_CONTENT_LENGTH "Content-Length"
-#define HEADER_MIME_TYPE      "Content-Type"
+#define HEADER_CONTENT_TYPE   "Content-Type"
 #define HEADER_CONNECTION     "Connection"
 /*----------------------------------------------------------------------------*/
-#define MIME_TYPE_DEFAULT     "text/html; charset=UTF-8"
-#define MIME_TYPE_DEFAULT_LENGTH strlen(MIME_TYPE_DEFAULT)
+#define CONTENT_TYPE_DEFAULT  "text/html; charset=UTF-8"
 /*----------------------------------------------------------------------------*/
 #define CONNECTION_KEEP_ALIVE "Keep-alive"
 /*----------------------------------------------------------------------------*/
@@ -145,7 +145,7 @@ int http_terminateRequest()
 #define CONVERT_BUFFER_LENGTH (sizeof(size_t) + 1)
 /*----------------------------------------------------------------------------*/
 int http_sendBuffer(int statusCode,
-                    char* mimeType, size_t mimeTypeLength,
+                    char* contentType,
                     char* body, size_t bodyLength)
 {
     static char convertBuffer[CONVERT_BUFFER_LENGTH];
@@ -168,24 +168,19 @@ int http_sendBuffer(int statusCode,
         LOG_CON(ERROR, socketFd, "Could not send Connnection-parameters");
         return -1;
     }
-    if(0 > http_sendHeader(HEADER_MIME_TYPE, mimeType))
+    if(0 > http_sendHeader(HEADER_CONTENT_TYPE, contentType))
     {
-        LOG_CON(ERROR, socketFd, "Could not send Mime-Type");
+        LOG_CON(ERROR, socketFd, "Could not send Content-Type");
         return -1;
-    }
-    if(0 != body)
-    {
-        if(0 > http_terminateRequest())
-        {
-            LOG_CON(ERROR, socketFd, "Error during transmission");
-            return -1;
-        }
-        SEND(body, bodyLength);
     }
     if(0 > http_terminateRequest())
     {
         LOG_CON(ERROR, socketFd, "Could not terminate header");
         return -1;
+    }
+    if(0 != body)
+    {
+        SEND(body, bodyLength);
     }
     return 0;
 }
@@ -209,7 +204,7 @@ void http_sendDefaultResponse(int statusCode)
                 BUILD_NUM, statusCode, message);
         sendBuffer[SEND_BUF_LENGTH] = 0;
         if(0 > http_sendBuffer(statusCode,
-                               MIME_TYPE_DEFAULT, MIME_TYPE_DEFAULT_LENGTH,
+                               CONTENT_TYPE_DEFAULT,
                                sendBuffer, messageLength))
         {
             LOG_CON(ERROR, socketFd, "Could not send reply");
@@ -399,6 +394,8 @@ int http_processGetHead(HttpRequest* request)
     size_t fileLength = 0;
     char* path = 0;
     size_t pathLength = 0;
+    ContentType* contentType = 0;
+    char* contentTypeString = CONTENT_TYPE_DEFAULT;
     if( (0 != url_getPath(*(request->url), request->urlMaxLength,
                           &path, &pathLength)) ||
             (1 > pathLength) )
@@ -422,6 +419,16 @@ int http_processGetHead(HttpRequest* request)
         PANIC("Requested resource not found");
     }
     fileLength = fileState.st_size;
+    /* Get content type */
+    contentType = contenttype_get(path, pathLength);
+    if(0 == contentType)
+    {
+      LOG_CON(ERROR, socketFd, "Something went severly wrong");
+    }
+    else
+    {
+      contentTypeString = contentType->typeString;
+    }
     if(GET == request->type)
     {
         fileBuffer = malloc(fileLength + 1);
@@ -438,12 +445,9 @@ int http_processGetHead(HttpRequest* request)
             close(socketFd);
             PANIC("Requested resource not found");
         }
-        fileBuffer[fileLength] = 0;
-        fileLength = strnlen(fileBuffer, fileLength) + 1;
     }
     if(0 != http_sendBuffer(200,
-                            MIME_TYPE_DEFAULT,  MIME_TYPE_DEFAULT_LENGTH,
-                            fileBuffer, fileLength))
+                            contentTypeString, fileBuffer, fileLength))
     {
         free(fileBuffer);
         close(socketFd);

@@ -39,20 +39,21 @@
 static struct HashTable* contentTypeHash;
 static ContentType* defaultContentType;
 /*----------------------------------------------------------------------------*/
-ContentType* createContentType(
+ContentType* contenttype_create(
         char* contentTypeString, ContentEncoding encoding)
 {
   char* copyOfTypeString = 0;
+  size_t typeStringLength = strnlen(contentTypeString, MAX_TYPE_STRING_LENGTH);
   ContentType* newType = malloc(sizeof(ContentType));
   memset(newType, 0, sizeof(ContentType));
-  copyOfTypeString = malloc(
-          strnlen(contentTypeString, MAX_TYPE_STRING_LENGTH) * sizeof(char));
+  copyOfTypeString = malloc(sizeof(char) * typeStringLength + 1);
+  strncpy(copyOfTypeString, contentTypeString, typeStringLength);
   newType->typeString = copyOfTypeString;
   newType->encoding = encoding;
   return newType;
 }
 /*----------------------------------------------------------------------------*/
-void disposeContentType(ContentType* toDispose)
+void contenttype_dispose(ContentType* toDispose)
 {
   if(0 != toDispose)
   {
@@ -64,33 +65,33 @@ void disposeContentType(ContentType* toDispose)
   }
 }
 /*----------------------------------------------------------------------------*/
-int initializeContentTypeDb()
+int contenttype_initialize()
 {
     contentTypeHash = hashTableCreate(15, stdHashFunction);
     hashTableSet(contentTypeHash, "jpg",
-                 createContentType("image/jpeg", None));
-    defaultContentType = createContentType("text/html", None);
+                 contenttype_create("image/jpeg", None));
+    defaultContentType = contenttype_create("text/html", None);
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-int closeContentTypeDb()
+int contenttype_close()
 {
   size_t i = 0;
   char** keys = hashTableKeys(contentTypeHash);
-  disposeContentType(defaultContentType);
+  contenttype_dispose(defaultContentType);
   for(i = 0; keys[i] != 0; i++)
   {
-    disposeContentType(hashTableGet(contentTypeHash, keys[i]));
+    contenttype_dispose(hashTableGet(contentTypeHash, keys[i]));
   }
   hashTableDispose(contentTypeHash);
   return 0;
 }
 /*----------------------------------------------------------------------------*/
-ContentType* getContentType(char* filePath, size_t maxPathLength)
+ContentType* contenttype_get(char* filePath, size_t maxPathLength)
 {
   size_t index;
   size_t pathLength = strnlen(filePath, maxPathLength);
-  if(pathLength >= maxPathLength)
+  if(pathLength > maxPathLength)
   {
     LOG(ERROR, "File path too long");
     return 0;
@@ -100,7 +101,6 @@ ContentType* getContentType(char* filePath, size_t maxPathLength)
     if(FILE_EXTENSION_SEPARATOR == filePath[index])
     {
       char* extension = filePath + index + 1;
-      printf("checking '%s'\n", extension);
       ContentType* contentType = hashTableGet(contentTypeHash, extension);
       if(0 == contentType)
       {
