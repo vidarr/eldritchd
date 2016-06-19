@@ -2,6 +2,98 @@
 
 eldritchd is a simple, minimalistic HTTP daemon.
 
+It has been written in plain C and facilitates only Posix and the
+BSD socket API.
+
+If you want to experience Eldritch in action, visit
+
+http://ubeer.org/eldritch.html
+
+Not accepting connections? - Well, Eldritch is still under development ;)
+
+# Requirements
+
+Eldritch requires a posix compatible operating system, along with
+BSD sockets available, as well as  [CMake](https://cmake.org).
+A Bash compatible shell is required for executing the scripts.
+
+# Howto Build
+
+Eldritch uses [CMake](https://cmake.org).
+
+First of all, create the necessary build directories by calling
+
+````Bash
+bin/prepare-builds.sh
+
+then change into the directory `release` or `debug` and call
+
+````Bash
+cmake ..
+
+This will create Makefiles to compile and link the executable.
+Now you can enter
+
+````
+make
+
+and the executable will be built underneath `src` .
+
+Finally, the executable needs to be installed since some precaution has to be
+taken in order to execute properly (like setuid root etc).
+
+Get back into the main directory and issue
+
+````Bash
+bin/setup.sh
+
+or
+
+````Bash
+bin/setup.sh debug
+
+if you compiled the `debug` version.
+
+Eldritch should now be installed underneath `/home/httpd/` as user `httpd`
+(this user will be created by the setup script if not present yet).
+
+# Howto Start
+
+Eldritch is fairly simple designed.
+It currently only accepts command line arguments and logs to stdout/stderr .
+
+Become user `httpd` by
+
+````Bash
+su httpd
+
+And change directories into the home directory of this user
+
+````Bash
+cd $HOME
+
+Eldritch can now be started via
+
+````Bash
+bin/eldritchd -p 80 &>$HOME/log &
+
+This will start eldritch trying to bind on all available interfaces to bord 80
+and writing any output in file `$HOME/log`.
+
+# Using Eldritch
+
+Eldritch will use `/home/httpd/htdocs` as document root.
+If you request `/index.html` from eldritch, it will look for a file
+`/home/httpd/htdocs/index.html` etc.
+
+# Demo
+
+If you want to experience Eldritch in action, visit
+
+http://ubeer.org/eldritch.html
+
+Not accepting connections? - Well, Eldritch is still under development ;)
+
 # Licensing
 
 With the exception of CuTest ( http://cutest.sourceforge.net ), all code

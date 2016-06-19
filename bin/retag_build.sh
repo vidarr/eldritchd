@@ -13,7 +13,7 @@ if [ -z "$LAST_BUILD" ]; then
 fi
 
 LAST_BUILD=$(expr $LAST_BUILD + 1)
-LAST_BUILD=$(printf "%06i" $LAST_BUILD)
+LAST_BUILD=$(printf "%i" $LAST_BUILD)
 
 git tag "build-${LAST_BUILD}"
 

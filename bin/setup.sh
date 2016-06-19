@@ -30,7 +30,7 @@ function setup_user {
 }
 
 function setup_executable {
-    SOURCE=../${VERSION}/src/$EXECUTABLE 
+    SOURCE=../${VERSION}/src/$EXECUTABLE
     echo "Installing $SOURCE to $HOME_DIR/bin"
     chown root:root $HOME_DIR
     mkdir $HOME_DIR/bin
