@@ -37,6 +37,9 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 /*----------------------------------------------------------------------------*/
 char* sockaddrToString(struct sockaddr* addr)
 {
@@ -84,19 +87,26 @@ static FILE* logFileDescriptor = 0;
 /*----------------------------------------------------------------------------*/
 void log_open(char* fileName)
 {
-  if(0 == fileName)
-  {
-    fprintf(stderr, "No log file name given\n");
-    exit(1);
-  }
-  logFileDescriptor = fopen(fileName, "w");
-  if(0 == logFileDescriptor)
-  {
-    fprintf(stderr, "Could not open log file '%s': %s\n",
-        fileName, strerror(errno));
-    exit(1);
-  }
-  fprintf(stderr, "Logging to %s\n", fileName);
+    if(0 == fileName)
+    {
+        fprintf(stderr, "No log file name given\n");
+        exit(1);
+    }
+    logFileDescriptor = fopen(fileName, "w");
+    if(0 == logFileDescriptor)
+    {
+        fprintf(stderr, "Could not open log file '%s': %s\n",
+            fileName, strerror(errno));
+        exit(1);
+    }
+    int fd = fileno(logFileDescriptor);
+    /* set permissions of log file to be accessable by userId only */
+    if( (0 != fchown(fd, getuid(), getgid())) ||
+        (0 != fchmod(fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)) )
+    {
+        PANIC("Could not set appropriate file permissions on log file");
+    }
+    fprintf(stderr, "Logging to %s\n", fileName);
 }
 /*----------------------------------------------------------------------------*/
 void log_close()

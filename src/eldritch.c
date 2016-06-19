@@ -37,6 +37,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <signal.h>
@@ -71,9 +72,24 @@ void checkUid(uid_t *uid, gid_t *gid)
     }
 }
 /*----------------------------------------------------------------------------*/
-int daemonize()
+void daemonize()
 {
-  return 0;
+  int result = fork();
+  if(0 > result)
+  {
+    PANIC("Could not fork for daemonization");
+  }
+  else if(0 != result)
+  {
+    /* We are the parent - exit */
+    exit(0);
+  }
+  /* if(0 > setsid())
+  {
+    PANIC("Could not create process session");
+  } */
+  /* We will change our directory to documentroot as soon as we chroot */
+  umask(0);
 }
 /*----------------------------------------------------------------------------*/
 void dropPriviledges(uid_t uid, gid_t gid)
@@ -231,16 +247,12 @@ int main(int argc, char** argv)
                 PANIC("Unknown option");
         };
     };
+    daemonize();
     log_open(logFile);
     snprintf(buffer, BUFFER_LENGTH,
     "Starting Version %u.%u.%u Build %05u",
         VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, BUILD_NUM);
     LOG(INFO, buffer);
-    if(0 != daemonize())
-    {
-      PANIC("Could not daemonize");
-    }
-    LOG(INFO, "Daemonized myself");
     if(0 != contenttype_initialize())
     {
       PANIC("Could not initialize ContentTypeDb");
