@@ -37,6 +37,7 @@
 static int keepListening = 1;
 static int keepAlive = 1;
 static int timeoutSecs = DEFAULT_TIMEOUT_SECS;
+static int keepaliveTimeoutSecs = DEFAULT_KEEPALIVE_TIMEOUT_SECS;
 /*----------------------------------------------------------------------------*/
 void forker_stop(int signal) {
     LOG(INFO, "Caught signal...");
@@ -108,7 +109,7 @@ void processFileDescriptors(fd_set *descriptorSet) {
             if(0 == pid) {
                 /* I am the child */
                 close(acceptSocket);
-                acceptor(readySocket, timeoutSecs, keepAlive);
+                acceptor(readySocket, keepaliveTimeoutSecs, keepAlive);
                 exit(0);
             }
             /* I am still the parent */

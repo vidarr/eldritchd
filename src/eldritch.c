@@ -84,10 +84,10 @@ void daemonize()
     /* We are the parent - exit */
     exit(0);
   }
-  /* if(0 > setsid())
+  if(0 > setsid())
   {
     PANIC("Could not create process session");
-  } */
+  }
   /* We will change our directory to documentroot as soon as we chroot */
   umask(0);
 }

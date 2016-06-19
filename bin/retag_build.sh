@@ -6,7 +6,7 @@ if [ -z "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-LAST_BUILD=$(git tag -l "build-*" | tail -n 1 | sed -e "s/build-\(.*\)/\1/g")
+LAST_BUILD=$(git tag -l "build-*" | sed -e "s/build-//g" | sort -n | tail -n 1)
 
 if [ -z "$LAST_BUILD" ]; then
     LAST_BUILD=0

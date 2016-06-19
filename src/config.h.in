@@ -49,6 +49,7 @@
 #define DEFAULT_PORT          "531"
 #define DEFAULT_LOG_FILE      "eldritch.log"
 #define DEFAULT_TIMEOUT_SECS  10
+#define DEFAULT_KEEPALIVE_TIMEOUT_SECS  300
 #define PORT_MAX              ((1 << 16) -1)
 /*----------------------------------------------------------------------------*/
 #define MAX_DESCRIPTORS       25
