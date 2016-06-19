@@ -212,7 +212,7 @@ int main(int argc, char** argv)
     interface    = initializeString(DEFAULT_INTERFACE);
     documentRoot = initializeString(DEFAULT_DOCUMENT_ROOT);
     logFile      = initializeString(DEFAULT_LOG_FILE);
-    while((c = getopt(argc, argv, "i:d:p:u:r:")) != EOF)
+    while((c = getopt(argc, argv, "i:d:p:o:")) != EOF)
     {
         switch(c) {
             case 'i':
