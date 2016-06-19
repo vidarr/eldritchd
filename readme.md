@@ -23,19 +23,22 @@ Eldritch uses [CMake](https://cmake.org).
 
 First of all, create the necessary build directories by calling
 
-````Bash
+```Bash
 bin/prepare-builds.sh
+```
 
 then change into the directory `release` or `debug` and call
 
-````Bash
+```Bash
 cmake ..
+```
 
 This will create Makefiles to compile and link the executable.
 Now you can enter
 
-````
+```Bash
 make
+```
 
 and the executable will be built underneath `src` .
 
@@ -44,13 +47,15 @@ taken in order to execute properly (like setuid root etc).
 
 Get back into the main directory and issue
 
-````Bash
+```Bash
 bin/setup.sh
+```
 
 or
 
-````Bash
+```Bash
 bin/setup.sh debug
+```
 
 if you compiled the `debug` version.
 
@@ -64,18 +69,21 @@ It currently only accepts command line arguments and logs to stdout/stderr .
 
 Become user `httpd` by
 
-````Bash
+```Bash
 su httpd
+```
 
 And change directories into the home directory of this user
 
-````Bash
+```Bash
 cd $HOME
+```
 
 Eldritch can now be started via
 
-````Bash
+```Bash
 bin/eldritchd -p 80 &>$HOME/log &
+```
 
 This will start eldritch trying to bind on all available interfaces to bord 80
 and writing any output in file `$HOME/log`.
@@ -90,7 +98,7 @@ If you request `/index.html` from eldritch, it will look for a file
 
 If you want to experience Eldritch in action, visit
 
-http://ubeer.org/eldritch.html
+[http://ubeer.org/eldritch.html](http://ubeer.org/eldritch.html)
 
 Not accepting connections? - Well, Eldritch is still under development ;)
 
