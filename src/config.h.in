@@ -46,9 +46,8 @@
 #define MAX_PENDING_REQUESTS  25
 #define DEFAULT_DOCUMENT_ROOT "/home/httpd/htdocs"
 #define DEFAULT_INTERFACE     ANY_INTERFACE
-#define DEFAULT_USER_DB       "/home/httpd/users"
-#define DEFAULT_RULES_DB      "/home/httpd/rules"
 #define DEFAULT_PORT          "531"
+#define DEFAULT_LOG_FILE      "eldritch.log"
 #define DEFAULT_TIMEOUT_SECS  10
 #define PORT_MAX              ((1 << 16) -1)
 /*----------------------------------------------------------------------------*/

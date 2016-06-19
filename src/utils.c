@@ -34,6 +34,7 @@
 #include "utils.h"
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/socket.h>
 #include <fcntl.h>
 /*----------------------------------------------------------------------------*/
@@ -79,15 +80,42 @@ char* sockaddrToString(struct sockaddr* addr)
 }
 /*----------------------------------------------------------------------------*/
 char buffer[BUFFER_LENGTH];
+static FILE* logFileDescriptor = 0;
+/*----------------------------------------------------------------------------*/
+void log_open(char* fileName)
+{
+  if(0 == fileName)
+  {
+    fprintf(stderr, "No log file name given\n");
+    exit(1);
+  }
+  logFileDescriptor = fopen(fileName, "w");
+  if(0 == logFileDescriptor)
+  {
+    fprintf(stderr, "Could not open log file '%s': %s\n",
+        fileName, strerror(errno));
+    exit(1);
+  }
+  fprintf(stderr, "Logging to %s\n", fileName);
+}
+/*----------------------------------------------------------------------------*/
+void log_close()
+{
+  if((stderr != logFileDescriptor) && (0 != logFileDescriptor))
+  {
+    fclose(logFileDescriptor);
+  }
+}
 /*----------------------------------------------------------------------------*/
 void logMsg(int priority, int sockfd, char* message, size_t length) {
     static char strTime[45];
     time_t now;
     struct tm * localTime;
     char *priorityString;
-    FILE *out = stdout;
-    if(priority != INFO) {
-        out = stderr;
+    /** Allow logging before log_open() called */
+    if(0 == logFileDescriptor)
+    {
+      logFileDescriptor = stderr;
     }
     switch(priority) {
         case 0:
@@ -105,7 +133,8 @@ void logMsg(int priority, int sockfd, char* message, size_t length) {
     message[length] = 0;
     if(0 > sockfd)
     {
-        fprintf(out, " [%30s] %5s - %50s\n", strTime, priorityString, message);
+        fprintf(logFileDescriptor,
+                " [%30s] %5s - %50s\n", strTime, priorityString, message);
     }
     else
     {
@@ -114,11 +143,12 @@ void logMsg(int priority, int sockfd, char* message, size_t length) {
         memset(&addr, addrLength, 0);
         if(0 != getpeername(sockfd, &addr, &addrLength))
         {
-            fprintf(out,
+            fprintf(logFileDescriptor,
                     " [%30s] %5s - %50s\n", strTime, priorityString, message);
             return;
         }
-        fprintf(out, " [%30s] %5s - %50s - %50s\n",
+        fprintf(logFileDescriptor,
+                " [%30s] %5s - %50s - %50s\n",
                 strTime, priorityString,
                 message, sockaddrToString(&addr));
     }

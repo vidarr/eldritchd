@@ -71,6 +71,11 @@ void checkUid(uid_t *uid, gid_t *gid)
     }
 }
 /*----------------------------------------------------------------------------*/
+int daemonize()
+{
+  return 0;
+}
+/*----------------------------------------------------------------------------*/
 void dropPriviledges(uid_t uid, gid_t gid)
 {
     if((0 != setregid(gid, gid)) || (0 != setreuid(uid, uid)) )
@@ -193,12 +198,11 @@ int main(int argc, char** argv)
     uid_t uid;
     gid_t gid;
     int c;
-    char *port;
+    char* port;
     int listenSocket;
-    char *interface;
-    char *documentRoot;
-    char *userDb;
-    char *rulesDb;
+    char* interface;
+    char* documentRoot;
+    char*  logFile;
     port = DEFAULT_PORT;
     opterr = 0;
     gid = 0;
@@ -207,6 +211,7 @@ int main(int argc, char** argv)
     port         = initializeString(DEFAULT_PORT);
     interface    = initializeString(DEFAULT_INTERFACE);
     documentRoot = initializeString(DEFAULT_DOCUMENT_ROOT);
+    logFile      = initializeString(DEFAULT_LOG_FILE);
     while((c = getopt(argc, argv, "i:d:p:u:r:")) != EOF)
     {
         switch(c) {
@@ -219,20 +224,23 @@ int main(int argc, char** argv)
             case 'p':
                 sanitizeString(port, optarg, 5);
                 break;
-            case 'u':
-                sanitizeString(userDb, optarg, MAX_OPT_STR_LEN);
-                break;
-            case 'r':
-                sanitizeString(rulesDb, optarg, MAX_OPT_STR_LEN);
+            case 'o':
+                sanitizeString(logFile, optarg, MAX_OPT_STR_LEN);
                 break;
             default:
                 PANIC("Unknown option");
         };
     };
+    log_open(logFile);
     snprintf(buffer, BUFFER_LENGTH,
     "Starting Version %u.%u.%u Build %05u",
         VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, BUILD_NUM);
     LOG(INFO, buffer);
+    if(0 != daemonize())
+    {
+      PANIC("Could not daemonize");
+    }
+    LOG(INFO, "Daemonized myself");
     if(0 != contenttype_initialize())
     {
       PANIC("Could not initialize ContentTypeDb");
@@ -258,5 +266,6 @@ int main(int argc, char** argv)
     LOG(INFO, "Closing listening socket");
     close(listenSocket);
     contenttype_close();
+    log_close();
     return 0;
 }
