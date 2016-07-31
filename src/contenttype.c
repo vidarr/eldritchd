@@ -39,7 +39,7 @@
 static struct HashTable* contentTypeHash;
 static ContentType* defaultContentType;
 /*----------------------------------------------------------------------------*/
-ContentType* contenttype_create(
+static ContentType* contenttype_create(
         char* contentTypeString, ContentEncoding encoding)
 {
   char* copyOfTypeString = 0;
@@ -47,13 +47,14 @@ ContentType* contenttype_create(
   ContentType* newType = malloc(sizeof(ContentType));
   memset(newType, 0, sizeof(ContentType));
   copyOfTypeString = malloc(sizeof(char) * typeStringLength + 1);
-  strncpy(copyOfTypeString, contentTypeString, typeStringLength);
+  memcpy(copyOfTypeString, contentTypeString, typeStringLength);
+  copyOfTypeString[typeStringLength] = 0;
   newType->typeString = copyOfTypeString;
   newType->encoding = encoding;
   return newType;
 }
 /*----------------------------------------------------------------------------*/
-void contenttype_dispose(ContentType* toDispose)
+static void contenttype_dispose(ContentType* toDispose)
 {
   if(0 != toDispose)
   {
@@ -110,5 +111,16 @@ ContentType* contenttype_get(char* filePath, size_t maxPathLength)
     }
   }
   return defaultContentType;
+}
+/*----------------------------------------------------------------------------*/
+int contenttype_set(char* fileEnding, char* type, ContentEncoding encoding)
+{
+  ContentType* contentType = contenttype_create(type, encoding);
+  contentType = hashTableSet(contentTypeHash, fileEnding, contentType);
+  if(0 != contentType)
+  {
+    contenttype_dispose(contentType);
+  }
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
