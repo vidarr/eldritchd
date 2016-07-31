@@ -47,6 +47,7 @@
 #include "forker.h"
 #include "http.h"
 #include "contenttype.h"
+#include "configuration.h"
 /*----------------------------------------------------------------------------*/
 void sanitizeString(char *dest, char *src, size_t maxLen)
 {
@@ -218,7 +219,9 @@ int main(int argc, char** argv)
     int listenSocket;
     char* interface;
     char* documentRoot;
-    char*  logFile;
+    char* logFile;
+    char* configFile;
+    struct EldritchConfig configuration;
     port = DEFAULT_PORT;
     opterr = 0;
     gid = 0;
@@ -228,7 +231,8 @@ int main(int argc, char** argv)
     interface    = initializeString(DEFAULT_INTERFACE);
     documentRoot = initializeString(DEFAULT_DOCUMENT_ROOT);
     logFile      = initializeString(DEFAULT_LOG_FILE);
-    while((c = getopt(argc, argv, "i:d:p:o:")) != EOF)
+    configFile   = initializeString("");
+    while((c = getopt(argc, argv, "i:d:p:o:c:")) != EOF)
     {
         switch(c) {
             case 'i':
@@ -242,6 +246,9 @@ int main(int argc, char** argv)
                 break;
             case 'o':
                 sanitizeString(logFile, optarg, MAX_OPT_STR_LEN);
+                break;
+            case 'c':
+                sanitizeString(configFile, optarg, MAX_OPT_STR_LEN);
                 break;
             default:
                 PANIC("Unknown option");
@@ -258,6 +265,12 @@ int main(int argc, char** argv)
       PANIC("Could not initialize ContentTypeDb");
     }
     LOG(INFO,"Initialized ContentType database");
+    if( (configFile[0] != 0) &&
+        (0 != configuration_readFile(configFile, &configuration)) ) {
+        PANIC("Could not read configuration file");
+        fprintf(stderr, "Could not read config\n");
+    }
+    LOG(INFO,"Read configuration");
     changeRoot(documentRoot);
     snprintf(buffer, BUFFER_LENGTH,
              "Chrooted to %s", documentRoot);

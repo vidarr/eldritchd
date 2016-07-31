@@ -31,39 +31,21 @@
  * GENCE  OR  OTHERWISE)  ARISING  IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __CONTENTTYPE_H__
-#define __CONTENTTYPE_H__
+#ifndef __CONFIGURATION_H__
+#define __CONFIGURATION_H__
 /*----------------------------------------------------------------------------*/
-#include <string.h>
+#include <stdio.h>
 /*----------------------------------------------------------------------------*/
-#define MAX_TYPE_STRING_LENGTH 255
+#define CONFIG_KEY_CONTENTTYPE "contenttype"
 /*----------------------------------------------------------------------------*/
-typedef enum {
-    None, Base64
-} ContentEncoding;
-/*----------------------------------------------------------------------------*/
-typedef struct {
-  char* typeString;
-  ContentEncoding encoding;
-} ContentType;
+struct EldritchConfig {
+    int nop;
+};
 /*----------------------------------------------------------------------------*/
 /**
- * Initialize contenttype database
- * @return 0 on success, -1 otherwise
+ * Read in eldritch configuration.
+ * @return 0 on success, -1 else
  */
-int contenttype_initialize();
-/*----------------------------------------------------------------------------*/
-int contenttype_close();
-/*----------------------------------------------------------------------------*/
-int contenttype_set(char* fileEnding, char* type, ContentEncoding encoding);
-/*----------------------------------------------------------------------------*/
-/**
- * Find appropriate ContentType for file filePath
- * Do not free the pointer returned!
- * @param filePath path to file
- * @param maxPathLength max length of filePath
- * @return Pointer to a ContentType struct describing the contenttype assoc. with the file
- */
-ContentType* contenttype_get(char* filePath, size_t maxPathLength);
+int configuration_readFile(char* filePath, struct EldritchConfig* conf);
 /*----------------------------------------------------------------------------*/
 #endif

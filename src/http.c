@@ -424,6 +424,7 @@ int http_processGetHead(HttpRequest* request)
     if(0 == contentType)
     {
       LOG_CON(ERROR, socketFd, "Something went severly wrong");
+      return -1;
     }
     else
     {

@@ -101,11 +101,11 @@ void log_open(char* fileName)
     }
     int fd = fileno(logFileDescriptor);
     /* set permissions of log file to be accessable by userId only */
-    if( (0 != fchown(fd, getuid(), getgid())) ||
+    /* if( (0 != fchown(fd, getuid(), getgid())) ||
         (0 != fchmod(fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)) )
     {
         PANIC("Could not set appropriate file permissions on log file");
-    }
+    } */
     fprintf(stderr, "Logging to %s\n", fileName);
 }
 /*----------------------------------------------------------------------------*/

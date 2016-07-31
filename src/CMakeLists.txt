@@ -14,6 +14,7 @@ set (
     utils.c
     url.c
     contenttype.c
+    configuration.c
 )
 
 set (
@@ -25,6 +26,7 @@ set (
     utils.h
     url.h
     contenttype.h
+    configuration.h
 )
 add_library(eldritch ${eldritch_src_source_files} ${eldritch_src_header_files})
 # add the executable
