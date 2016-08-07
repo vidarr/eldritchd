@@ -128,9 +128,13 @@ int contentTypeSetCallback(char* ending, char* type, char* encoding)
 char* test_emptyConfig()
 {
   char* filename = writeToTempFile("", 0);
+  configuration_initializeConfigStructure(
+      &config, contentTypeSetCallback, MAX_LEN);
   mu_assert("readFile reported error",
       0 == configuration_readFile(filename, &config));
   deleteFile(filename);
+  configuration_clearConfigStructure(&config);
+  return 0;
 }
 /*----------------------------------------------------------------------------*/
 char* test_singleValidLine()
@@ -140,12 +144,15 @@ char* test_singleValidLine()
   initializeExpectedArrays(1);
   expectedEndings[0] = "abc";
   expectedTypes[0] = "rheto/rik";
+  configuration_initializeConfigStructure(
+      &config, contentTypeSetCallback, MAX_LEN);
   mu_assert("Reading single valid config line",
       0 == configuration_readFile(filename, &config));
   mu_assert("Not all expected contentypes read in",
       (0 == checkAllExpectedArrays()) );
   deleteFile(filename);
   freeExpectedArrays();
+  configuration_clearConfigStructure(&config);
   return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -169,12 +176,15 @@ char* test_MultipleValidLines()
   expectedTypes[2] = "disc/omnia";
   expectedTypes[3] = "disc/lancre";
   expectedTypes[4] = "disc/noman";
+  configuration_initializeConfigStructure(
+      &config, contentTypeSetCallback, MAX_LEN);
   mu_assert("Reading multiple valid config line",
       0 == configuration_readFile(filename, &config));
   mu_assert("Not all expected contentypes read in",
       (0 == checkAllExpectedArrays()) );
   deleteFile(filename);
   freeExpectedArrays();
+  configuration_clearConfigStructure(&config);
   return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -183,10 +193,13 @@ char* test_singleInvalidLine()
   char* filename = writeToTempFile("THIS is TotAlly Invalid!",
       -1);
   initializeExpectedArrays(0);
+  configuration_initializeConfigStructure(
+      &config, contentTypeSetCallback, MAX_LEN);
   mu_assert("Reading single invalid config line",
       0 != configuration_readFile(filename, &config));
   deleteFile(filename);
   freeExpectedArrays();
+  configuration_clearConfigStructure(&config);
   return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -197,7 +210,8 @@ char* test_listen()
   char* filename = writeToTempFile(
       CONFIG_KEY_LISTEN " " TEST_INTERFACE " " TEST_PORT, -1);
   initializeExpectedArrays(0);
-  configuration_initializeConfigStructure(&config, MAX_LEN);
+  configuration_initializeConfigStructure(
+      &config, contentTypeSetCallback, MAX_LEN);
   mu_assert("Reading listen directive",
       0 == configuration_readFile(filename, &config));
   mu_assert("Reading listen directive - interface",
@@ -218,11 +232,31 @@ char* test_documentRoot()
   char* filename = writeToTempFile(
       CONFIG_KEY_DOCUMENTROOT " " TEST_DOCUMENTROOT, -1);
   initializeExpectedArrays(0);
-  configuration_initializeConfigStructure(&config, MAX_LEN);
-  mu_assert("Reading listen directive",
+  configuration_initializeConfigStructure(
+      &config, contentTypeSetCallback, MAX_LEN);
+  mu_assert("Reading documentroot directive",
       0 == configuration_readFile(filename, &config));
-  mu_assert("Reading listen directive - interface",
+  mu_assert("Reading documentroot directive",
       0 == strncmp(config.documentRoot, TEST_DOCUMENTROOT, MAX_LEN));
+  deleteFile(filename);
+  freeExpectedArrays();
+  configuration_clearConfigStructure(&config);
+  return 0;
+  #undef TEST_DOCUMENTROOT
+}
+/*----------------------------------------------------------------------------*/
+char* test_logFile()
+{
+  #define TEST_LOGFILE "/my/logfile"
+  char* filename = writeToTempFile(
+      CONFIG_KEY_LOGFILE " " TEST_LOGFILE, -1);
+  initializeExpectedArrays(0);
+  configuration_initializeConfigStructure(
+      &config, contentTypeSetCallback, MAX_LEN);
+  mu_assert("Reading logfile directive",
+      0 == configuration_readFile(filename, &config));
+  mu_assert("Reading logfile directive",
+      0 == strncmp(config.logFile, TEST_LOGFILE, MAX_LEN));
   deleteFile(filename);
   freeExpectedArrays();
   configuration_clearConfigStructure(&config);
@@ -232,13 +266,13 @@ char* test_documentRoot()
 /*----------------------------------------------------------------------------*/
 char* all_tests()
 {
-  config.contenttype_set = contentTypeSetCallback;
   mu_run_test(test_emptyConfig);
   mu_run_test(test_singleValidLine);
   mu_run_test(test_MultipleValidLines);
   mu_run_test(test_singleInvalidLine);
   mu_run_test(test_listen);
   mu_run_test(test_documentRoot);
+  mu_run_test(test_logFile);
   return 0;
 }
 /*----------------------------------------------------------------------------*/

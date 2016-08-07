@@ -3,6 +3,7 @@ USER=httpd
 GROUP=httpd
 EXECUTABLE=eldritchd
 VERSION=release
+RC_SOURCE=../etc/eldritch.rc
 
 function parse_arguments {
     if [ ! -z $1 ]; then
@@ -45,9 +46,21 @@ function setup_root_directory {
     chown $USER:$GROUP $HOME_DIR/htdocs
 }
 
+function install_default_config {
+  RC_TARGET="${HOME_DIR}/${EXECUTABLE}.rc"
+  if [ -e "$RC_TARGET" ]; then
+    echo "$RC_TARGET already in place - not overwriting it"
+  else
+    echo "Installing $RC_SOURCE to $RC_TARGET"
+    cp $RC_SOURCE $RC_TARGET
+    chown root:root $RC_TARGET
+  fi
+}
+
 
 parse_arguments $*
 check_root
 setup_user
 setup_executable
 setup_root_directory
+install_default_config

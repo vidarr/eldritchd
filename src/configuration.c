@@ -132,12 +132,12 @@ static int readListen(char* line)
   memcpy(config->interface, interface, length);
   config->interface[length] = 0;
   length = strnlen(port, config->maxStringLength);
-  memcpy(config->port, port, config->maxStringLength);
+  memcpy(config->port, port, length);
   config->port[length] = 0;
   return 0;
 }
 /*----------------------------------------------------------------------------*/
-static int readDocumentRoot(char* line)
+static int readNextToken(char* line, char* target)
 {
   char* path = 0;
   char* endOfToken = 0;
@@ -153,8 +153,8 @@ static int readDocumentRoot(char* line)
     return -1;
   }
   size_t length = strnlen(path, config->maxStringLength);
-  memcpy(config->documentRoot, path, length);
-  config->documentRoot[length] = 0;
+  memcpy(target, path, length);
+  target[length] = 0;
   return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -184,7 +184,11 @@ static int interpretLine(char* line)
   }
   if(0 == strncmp(beginning, CONFIG_KEY_DOCUMENTROOT, MAX_LINE_LENGTH))
   {
-    return readDocumentRoot(end);
+    return readNextToken(end, config->documentRoot);
+  }
+  if(0 == strncmp(beginning, CONFIG_KEY_LOGFILE, MAX_LINE_LENGTH))
+  {
+    return readNextToken(end, config->logFile);
   }
   return -1;
 }
@@ -192,13 +196,14 @@ static int interpretLine(char* line)
 static int readStream(FILE* inStream, struct EldritchConfig* conf)
 {
   int index;
-  char* buffer = malloc(MAX_LINE_LENGTH);
+  char* buffer = malloc(sizeof(char) * MAX_LINE_LENGTH + 1);
   config = conf;
   while(NULL != fgets(buffer, MAX_LINE_LENGTH, inStream))
   {
     printf("Got line '%s'\n", buffer);
     if(0 != interpretLine(buffer))
     {
+      free(buffer);
       configuration_error = "Malformed configuration file";
       return -1;
     }
@@ -231,12 +236,15 @@ int configuration_readFile(char* filePath, struct EldritchConfig* conf)
 }
 /*----------------------------------------------------------------------------*/
 void configuration_initializeConfigStructure(struct EldritchConfig* conf,
-                                             size_t maxStringLength)
+    int (*contenttype_setter)(char*, char*, char*),
+    size_t maxStringLength)
 {
   conf->maxStringLength = maxStringLength;
   conf->interface = malloc((maxStringLength + 1) * sizeof(char));
   conf->port = malloc((maxStringLength + 1) * sizeof(char));
   conf->documentRoot = malloc((maxStringLength + 1) * sizeof(char));
+  conf->logFile = malloc((maxStringLength + 1) * sizeof(char));
+  conf->contenttype_set = contenttype_setter;
 }
 /*----------------------------------------------------------------------------*/
 void configuration_clearConfigStructure(struct EldritchConfig * conf)
@@ -244,5 +252,6 @@ void configuration_clearConfigStructure(struct EldritchConfig * conf)
   free(conf->interface);
   free(conf->port);
   free(conf->documentRoot);
+  free(conf->logFile);
 }
 #undef MAX_LINE_LENGTH

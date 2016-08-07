@@ -40,12 +40,14 @@
 #define CONFIG_KEY_CONTENTTYPE  "contenttype"
 #define CONFIG_KEY_LISTEN       "listen"
 #define CONFIG_KEY_DOCUMENTROOT "documentroot"
+#define CONFIG_KEY_LOGFILE      "logfile"
 /*----------------------------------------------------------------------------*/
 struct EldritchConfig {
   size_t maxStringLength;
   char* port;
   char* interface;
   char* documentRoot;
+  char* logFile;
   int (*contenttype_set)(char*, char*, char*);
 };
 /*----------------------------------------------------------------------------*/
@@ -62,7 +64,8 @@ int configuration_readFile(char* filePath, struct EldritchConfig* conf);
  * to have been initialized beforehand.
  */
 void configuration_initializeConfigStructure(struct EldritchConfig* conf,
-                                             size_t maxStringLength);
+    int (*contenttype_setter)(char*, char*, char*),
+    size_t maxStringLength);
 /*----------------------------------------------------------------------------*/
 /**
  * Frees all internal memory of configuration structure.

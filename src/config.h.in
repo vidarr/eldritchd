@@ -44,6 +44,7 @@
 /*----------------------------------------------------------------------------*/
 #define MAX_OPT_STR_LEN       255
 #define MAX_PENDING_REQUESTS  25
+#define DEFAULT_CONFIG_FILE   "/home/httpd/eldritchd.rc"
 #define DEFAULT_DOCUMENT_ROOT "/home/httpd/htdocs"
 #define DEFAULT_INTERFACE     ANY_INTERFACE
 #define DEFAULT_PORT          "531"
