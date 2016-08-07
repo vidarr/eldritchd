@@ -113,8 +113,10 @@ ContentType* contenttype_get(char* filePath, size_t maxPathLength)
   return defaultContentType;
 }
 /*----------------------------------------------------------------------------*/
-int contenttype_set(char* fileEnding, char* type, ContentEncoding encoding)
+int contenttype_set(char* fileEnding, char* type, char* encodingString)
 {
+  ContentEncoding encoding = None;
+  /* TODO: Evaluate encodingString */
   ContentType* contentType = contenttype_create(type, encoding);
   contentType = hashTableSet(contentTypeHash, fileEnding, contentType);
   if(0 != contentType)
@@ -123,4 +125,5 @@ int contenttype_set(char* fileEnding, char* type, ContentEncoding encoding)
   }
   return 0;
 }
+/*----------------------------------------------------------------------------*/
 /*----------------------------------------------------------------------------*/

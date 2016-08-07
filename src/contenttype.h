@@ -55,7 +55,7 @@ int contenttype_initialize();
 /*----------------------------------------------------------------------------*/
 int contenttype_close();
 /*----------------------------------------------------------------------------*/
-int contenttype_set(char* fileEnding, char* type, ContentEncoding encoding);
+int contenttype_set(char* fileEnding, char* type, char* encodingString);
 /*----------------------------------------------------------------------------*/
 /**
  * Find appropriate ContentType for file filePath

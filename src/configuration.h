@@ -35,12 +35,21 @@
 #define __CONFIGURATION_H__
 /*----------------------------------------------------------------------------*/
 #include <stdio.h>
+#include "contenttype.h"
 /*----------------------------------------------------------------------------*/
-#define CONFIG_KEY_CONTENTTYPE "contenttype"
+#define CONFIG_KEY_CONTENTTYPE  "contenttype"
+#define CONFIG_KEY_LISTEN       "listen"
+#define CONFIG_KEY_DOCUMENTROOT "documentroot"
 /*----------------------------------------------------------------------------*/
 struct EldritchConfig {
-    int nop;
+  size_t maxStringLength;
+  char* port;
+  char* interface;
+  char* documentRoot;
+  int (*contenttype_set)(char*, char*, char*);
 };
+/*----------------------------------------------------------------------------*/
+extern char* configuration_error;
 /*----------------------------------------------------------------------------*/
 /**
  * Read in eldritch configuration.
@@ -48,4 +57,16 @@ struct EldritchConfig {
  */
 int configuration_readFile(char* filePath, struct EldritchConfig* conf);
 /*----------------------------------------------------------------------------*/
+/**
+ * Initialize configuration structure. The memory for the struct itself needs
+ * to have been initialized beforehand.
+ */
+void configuration_initializeConfigStructure(struct EldritchConfig* conf,
+                                             size_t maxStringLength);
+/*----------------------------------------------------------------------------*/
+/**
+ * Frees all internal memory of configuration structure.
+ * The structure itself needs to be freed separately
+ */
+void configuration_clearConfigStructure(struct EldritchConfig * conf);
 #endif

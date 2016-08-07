@@ -254,7 +254,7 @@ int main(int argc, char** argv)
                 PANIC("Unknown option");
         };
     };
-    daemonize();
+    /* daemonize(); */
     log_open(logFile);
     snprintf(buffer, BUFFER_LENGTH,
     "Starting Version %u.%u.%u Build %05u",
@@ -265,6 +265,7 @@ int main(int argc, char** argv)
       PANIC("Could not initialize ContentTypeDb");
     }
     LOG(INFO,"Initialized ContentType database");
+    configuration.contenttype_set = contenttype_set;
     if( (configFile[0] != 0) &&
         (0 != configuration_readFile(configFile, &configuration)) ) {
         PANIC("Could not read configuration file");
