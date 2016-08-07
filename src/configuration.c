@@ -76,7 +76,6 @@ static int readContentType(char* line)
   char* endOfToken = 0;
   char* type = 0;
   char* encoding = 0;
-  printf("Found contentype ...\n");
   cutNextToken(line, &fileEnding, &endOfToken);
   if(0 != endOfToken)
   {
@@ -107,7 +106,6 @@ static int readListen(char* line)
   char* interface = 0;
   char* endOfToken = 0;
   char*  port = 0;
-  printf("Found listen ...\n");
   cutNextToken(line, &interface, &endOfToken);
   if(0 != endOfToken)
   {
@@ -141,7 +139,6 @@ static int readNextToken(char* line, char* target)
 {
   char* path = 0;
   char* endOfToken = 0;
-  printf("Found documentroot ...\n");
   cutNextToken(line, &path, &endOfToken);
   if(0 != endOfToken)
   {
@@ -162,14 +159,12 @@ static int interpretLine(char* line)
 {
   char* beginning = 0;
   char* end = 0;
-  printf("I got '%s'\n", line);
   cutNextToken(line, &beginning, &end);
   if(0 != end)
   {
     *end= 0;
     end++;
   }
-  printf("got '%s'\n", beginning);
   /* Note:
      beginning points to a string containing the first word only.
      end points to the 'beginning of the remainder'.
@@ -200,7 +195,6 @@ static int readStream(FILE* inStream, struct EldritchConfig* conf)
   config = conf;
   while(NULL != fgets(buffer, MAX_LINE_LENGTH, inStream))
   {
-    printf("Got line '%s'\n", buffer);
     if(0 != interpretLine(buffer))
     {
       free(buffer);
@@ -208,12 +202,10 @@ static int readStream(FILE* inStream, struct EldritchConfig* conf)
       return -1;
     }
   }
-  printf("Done reading...\n");
   free(buffer);
   if(0 == feof(inStream))
   {
     configuration_error = strerror(errno);
-    printf("%s\n", configuration_error);
     return -1;
   }
   return 0;
@@ -227,7 +219,6 @@ int configuration_readFile(char* filePath, struct EldritchConfig* conf)
   if(NULL == configFile)
   {
     configuration_error = "Could not open file";
-    printf("Could not open file %s\n", filePath);
     return -1;
   }
   returnValue = readStream(configFile, conf);
