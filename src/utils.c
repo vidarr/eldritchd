@@ -43,7 +43,7 @@
 /*----------------------------------------------------------------------------*/
 char* sockaddrToString(struct sockaddr* addr)
 {
-    static char addressStr[128];
+    static char addressStr[INET6_ADDRSTRLEN + 7 + 1];
     static char portStr[7];
     void *addrIn = 0;
     struct sockaddr_in* sin;
@@ -59,7 +59,7 @@ char* sockaddrToString(struct sockaddr* addr)
             case AF_INET6:
                 sin6 = (struct sockaddr_in6*)addr;
                 snprintf(portStr, 7, ":%i", ntohs(sin6->sin6_port));
-                addrIn = &(sin->sin_addr);
+                addrIn = &(sin6->sin6_addr);
                 break;
             default:
                 fprintf(stderr,
@@ -67,14 +67,15 @@ char* sockaddrToString(struct sockaddr* addr)
                         "family not supported %d\n", addr->sa_family);
                 return "UNKNOWN";
         };
-        if(NULL == inet_ntop(addr->sa_family, addrIn, addressStr, 128))
+        if(NULL == inet_ntop(
+              addr->sa_family, addrIn, addressStr, INET6_ADDRSTRLEN))
         {
             fprintf(stderr, "Could not print network address:%s\n",
                     strerror(errno));
             return "INVALID";
         }
-        strncat(addressStr, portStr, 128);
-        addressStr[127] = 0;
+        strncat(addressStr, portStr, INET6_ADDRSTRLEN + 7);
+        addressStr[INET6_ADDRSTRLEN + 7] = 0;
     } else {
         addressStr[0] = '-';
         addressStr[1] = 0;
