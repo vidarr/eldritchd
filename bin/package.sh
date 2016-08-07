@@ -11,6 +11,7 @@ cd -
 cd $PACKAGE_DIR
 cp ../release/src/eldritchd release/src
 
+cp ../etc . -r
 cp ../bin . -r
 
 tar cf ../eldritch.tar.gz $PACKAGE_DIR
