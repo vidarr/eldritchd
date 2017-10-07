@@ -142,7 +142,7 @@ int http_terminateRequest()
     return 2 != send(socketFd, crlf, 2, 0);
 }
 /*----------------------------------------------------------------------------*/
-#define CONVERT_BUFFER_LENGTH (sizeof(size_t) + 1)
+#define CONVERT_BUFFER_LENGTH (sizeof(size_t) * 3 + 1)
 /*----------------------------------------------------------------------------*/
 int http_sendBuffer(int statusCode,
                     char* contentType,
@@ -153,7 +153,7 @@ int http_sendBuffer(int statusCode,
     {
         return -1;
     }
-    if(0 > snprintf(convertBuffer, CONVERT_BUFFER_LENGTH, "%i",bodyLength))
+    if(0 > snprintf(convertBuffer, CONVERT_BUFFER_LENGTH, "%zu",bodyLength))
     {
         LOG_CON(ERROR, socketFd, "Could not convert body length");
         return -1;
