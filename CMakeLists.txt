@@ -19,5 +19,7 @@ enable_testing()
 add_subdirectory("test")
 add_subdirectory("src")
 
+add_test(NAME testIo COMMAND test_io)
 add_test(NAME testUrl COMMAND test_url)
 add_test(NAME testContentType COMMAND test_contenttype)
+add_test(NAME testConfiguration COMMAND test_configuration)

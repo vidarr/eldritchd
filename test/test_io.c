@@ -31,29 +31,55 @@
  * GENCE  OR  OTHERWISE)  ARISING  IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __IO_H__
-#define __IO_H__
+#include "minunit.h"
+#include "io.h"
+#include <sys/time.h>
 /*----------------------------------------------------------------------------*/
-#include <sys/mman.h>
+#define MIN_ACCURACY_USEC 200
 /*----------------------------------------------------------------------------*/
-/**
- * Tries to map a file read-only into memory.
- * On error, there are no side effects.
- * @param targetFd receives the file descriptor of the file opened.
- * @param targetPointer will point to the mmapped mem region.
- * @return 0 on success, -1 otherwise.
- */
-int io_mmapFileRO(char* path, size_t size, int* targetFd, void** targetPointer);
+static long measureTimeWaited(long usecsToWait)
+{
+    struct timeval before;
+    struct timeval after;
+    gettimeofday(&before, 0);
+    io_waitMicroSecs(usecsToWait);
+    gettimeofday(&after, 0);
+    long usecsPassed = after.tv_sec - before.tv_sec;
+    usecsPassed *= 1000 * 1000;
+    usecsPassed += after.tv_usec - before.tv_usec;
+    return usecsPassed;
+}
 /*----------------------------------------------------------------------------*/
-/**
- * Tries to unmap a previously mapped file.
- * @return 0 on success
- */
-int io_unmapFile(int fd, void* mmapped, size_t length);
-/*----------------------------------------------------------------------------*/
-int io_writeChunked(int fd, char* buffer, size_t length);
-/*----------------------------------------------------------------------------*/
-int io_waitMicroSecs(long usec);
-/*----------------------------------------------------------------------------*/
-#endif
+char* test_waitMicroSecs()
+{
+    long timeWaited = measureTimeWaited(24);
+    mu_assert( "24 ms",
+            (24 + MIN_ACCURACY_USEC > timeWaited) && (24 < timeWaited));
 
+    timeWaited = measureTimeWaited(80);
+    mu_assert( "80 ms",
+            (80 + MIN_ACCURACY_USEC > timeWaited) && (80 < timeWaited));
+
+    timeWaited = measureTimeWaited(517);
+    mu_assert( "517 ms",
+            (517 + MIN_ACCURACY_USEC > timeWaited) && (517 < timeWaited));
+
+    timeWaited = measureTimeWaited(2013);
+    mu_assert( "2013 ms",
+            (2013 + MIN_ACCURACY_USEC > timeWaited) && (2013 < timeWaited));
+
+    timeWaited = measureTimeWaited(24611);
+    mu_assert( "24611 ms",
+            (24611 + MIN_ACCURACY_USEC > timeWaited) && (24611 < timeWaited));
+
+    return 0;
+}
+/*----------------------------------------------------------------------------*/
+char* all_tests()
+{
+    mu_run_test(test_waitMicroSecs);
+    return 0;
+}
+/*----------------------------------------------------------------------------*/
+TEST_MAIN(all_tests);
+/*----------------------------------------------------------------------------*/
