@@ -120,33 +120,6 @@ int http_terminateRequest()
     return 2 != send(socketFd, crlf, 2, 0);
 }
 /*----------------------------------------------------------------------------*/
-int http_sendChunked(char* buffer, size_t length)
-{
-    /* EVEN BETTER: Check bytes available to write, and send as much
-     * as possible ? */
-    size_t bytesRemaining = length;
-    size_t nextChunkSize = 0;
-    char* nextChunk = buffer;
-    size_t sentBytes = 0;
-    while(0 < bytesRemaining)
-    {
-        nextChunkSize = bytesRemaining;
-        if(nextChunkSize > SEND_CHUNK_SIZE_BYTES)
-        {
-            nextChunkSize = SEND_CHUNK_SIZE_BYTES;
-        }
-        sentBytes = send(socketFd, nextChunk, nextChunkSize, 0);
-        bytesRemaining -= sentBytes;
-        nextChunk += sentBytes;
-        if(0 > sentBytes)
-        {
-            LOG_CON(ERROR, socketFd, strerror(errno));
-            return -1;
-        }
-    }
-    return 0;
-}
-/*----------------------------------------------------------------------------*/
 #define CONVERT_BUFFER_LENGTH (sizeof(size_t) * 3 + 1)
 /*----------------------------------------------------------------------------*/
 int http_sendBuffer(int statusCode,
@@ -185,7 +158,7 @@ int http_sendBuffer(int statusCode,
     }
     if(0 != body)
     {
-        return http_sendChunked(body, bodyLength);
+        return io_writeChunked(socketFd, body, bodyLength);
     }
     return 0;
 }
