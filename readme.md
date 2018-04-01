@@ -65,7 +65,17 @@ Eldritch should now be installed underneath `/home/httpd/` as user `httpd`
 # Howto Start
 
 Eldritch is fairly simple designed.
-It currently only accepts command line arguments and logs to stdout/stderr .
+
+It requires a config file to start up, like this one:
+
+```
+listen * 80
+logfile /tmp/eldritch.log
+documentroot /home/httpd/htdocs
+contenttype zip application/zip
+```
+
+Thus create a file with this content and save it.
 
 Become user `httpd` by
 
@@ -82,13 +92,35 @@ cd $HOME
 Eldritch can now be started via
 
 ```Bash
-bin/eldritchd -p 80 &>$HOME/log &
+bin/eldritchd [PATH_TO_CONFIG_FILE]
 ```
 
-This will start eldritch trying to bind on all available interfaces to bord 80
-and writing any output in file `$HOME/log`.
+If `PATH_TO_CONFIG_FILE` is omitted, eldritch will try to load a default config
+file.
+
+Now eldritch will start up, load the config, try to bind to the interfaces
+specified in the config, chroot to its document root, and drop root priviledges.
 
 # Using Eldritch
+
+the configuration of eldritch is straight forward.
+
+You provide all configuration in a single file, and hand over  the path to this 
+file as command line argument to eldritch.
+
+The file itself should contain an entry
+
+* `listen INTERFACE PORT` : Eldritch will bind to the socket INTERFACE:PORT
+* `logfile PATH_TO_LOGFILE`: Eldritch will log into this file.
+* `documentroot PATH_TO_DIRECTORY`: Eldritch will chroot to this directory and\
+ use it as its 'database' - i.e. provide the files therein.
+
+By default, eldritch only delivers `text/html` for any file.
+You might define additional mime types for certain file name extensions by
+
+* `contenttype FILE_EXTENSION MIME_TYPE`: Eldritch will deliver any file \
+ `*.EXTENSION_TYPE` with `MIME_TYPE` as mime.
+
 
 Eldritch will use `/home/httpd/htdocs` as document root.
 If you request `/index.html` from eldritch, it will look for a file
