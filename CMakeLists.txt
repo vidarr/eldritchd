@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.0)
 project (eldritch
-         VERSION 1.0.0)
+         VERSION 1.1.0)
 
 # configure a header file to pass some of the CMake settings
 # to the source code
