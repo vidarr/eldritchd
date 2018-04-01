@@ -34,7 +34,7 @@ function setup_executable {
     SOURCE=../${VERSION}/src/$EXECUTABLE
     echo "Installing $SOURCE to $HOME_DIR/bin"
     chown root:root $HOME_DIR
-    mkdir $HOME_DIR/bin
+    mkdir -p $HOME_DIR/bin
     chown root:root $HOME_DIR
     cp $SOURCE $HOME_DIR/bin
     chmod u+s $HOME_DIR/bin/$EXECUTABLE
@@ -42,7 +42,7 @@ function setup_executable {
 }
 
 function setup_root_directory {
-    mkdir $HOME_DIR/htdocs
+    mkdir -p $HOME_DIR/htdocs
     chown $USER:$GROUP $HOME_DIR/htdocs
 }
 

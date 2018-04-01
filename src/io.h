@@ -1,5 +1,5 @@
 /*
- * (C) 2016 Michael J. Beer
+ * (C) 2018 Michael J. Beer
  * All rights reserved.
  *
  * Redistribution  and use in source and binary forms, with or with‐
@@ -31,38 +31,25 @@
  * GENCE  OR  OTHERWISE)  ARISING  IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __CONFIG_H__
-#define __CONFIG_H__
+#ifndef __IO_H__
+#define __IO_H__
 /*----------------------------------------------------------------------------*/
-#define ELDRITCH_NAME         "Eldritch"
-#define ELDRITCH_URL          "https://github.com/vidarr/eldritchd"
+#include <sys/mman.h>
 /*----------------------------------------------------------------------------*/
-#define VERSION_MAJOR @eldritch_VERSION_MAJOR@
-#define VERSION_MINOR @eldritch_VERSION_MINOR@
-#define VERSION_PATCH @eldritch_VERSION_PATCH@
-#define BUILD_NUM 0
+/**
+ * Tries to map a file read-only into memory.
+ * On error, there are no side effects.
+ * @param targetFd receives the file descriptor of the file opened.
+ * @param targetPointer will point to the mmapped mem region.
+ * @return 0 on success, -1 otherwise.
+ */
+int io_mmapFileRO(char* path, size_t size, int* targetFd, void** targetPointer);
 /*----------------------------------------------------------------------------*/
-#define MAX_OPT_STR_LEN       255
-#define MAX_PENDING_REQUESTS  25
-#define DEFAULT_CONFIG_FILE   "/home/httpd/eldritchd.rc"
-#define DEFAULT_DOCUMENT_ROOT "/home/httpd/htdocs"
-#define DEFAULT_INTERFACE     ANY_INTERFACE
-#define DEFAULT_PORT          "531"
-#define DEFAULT_LOG_FILE      "eldritch.log"
-#define DEFAULT_TIMEOUT_SECS  10
-#define DEFAULT_KEEPALIVE_TIMEOUT_SECS  300
-#define PORT_MAX              ((1 << 16) -1)
-/*----------------------------------------------------------------------------*/
-#define MAX_DESCRIPTORS       25
-/*----------------------------------------------------------------------------*/
-#define ANY_INTERFACE         "*"
-/*----------------------------------------------------------------------------*/
-#define SOCKET_READ_BUFFER_LEN 255
-/*----------------------------------------------------------------------------*/
-/* Read/Send maximum of 20MB at once */
-#define SEND_CHUNK_SIZE_BYTES  (20 * 1024 * 1024)
-/*----------------------------------------------------------------------------*/
-#define MIN_TOKEN_LENGTH 16
-#define MAX_TOKEN_LENGTH (64 * 1024)
+/**
+ * Tries to unmap a previously mapped file.
+ * @return 0 on success
+ */
+int io_unmapFile(int fd, void* mmapped, size_t length);
 /*----------------------------------------------------------------------------*/
 #endif
+

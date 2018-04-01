@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include "http.h"
+#include "io.h"
 #include "url.h"
 #include "contenttype.h"
 /*----------------------------------------------------------------------------*/
@@ -84,34 +85,11 @@ char *http_message(int statusCode)
     return UNKNOWN_ERROR_STR;
 }
 /*----------------------------------------------------------------------------*/
-int readFileIntoBuffer(char* fileBuffer, size_t fileLength, char* path)
-{
-    ssize_t readBytes = 0;
-    int fd = open(path, O_RDONLY);
-    if(0 > fd)
-    {
-        LOG_CON(ERROR, socketFd, strerror(errno));
-        return -1;
-    }
-    readBytes = read(fd, fileBuffer, fileLength);
-    close(fd);
-    if(fileLength > readBytes)
-    {
-        if(0 > readBytes)
-        {
-            LOG_CON(ERROR, socketFd, strerror(errno));
-        } else {
-            LOG_CON(ERROR, socketFd, "File size unexpected ?");
-        }
-        return -1;
-    }
-    return 0;
-}
-/*----------------------------------------------------------------------------*/
 #define SEND(data, length)                       \
     do {                                         \
         if(length != send(socketFd, data, length, 0)) \
         {                                        \
+            LOG_CON(ERROR, socketFd, strerror(errno)); \
             return -1;                           \
         }                                        \
     } while(0)
@@ -140,6 +118,33 @@ int http_terminateRequest()
 {
     static char* crlf = CRLF;
     return 2 != send(socketFd, crlf, 2, 0);
+}
+/*----------------------------------------------------------------------------*/
+int http_sendChunked(char* buffer, size_t length)
+{
+    /* EVEN BETTER: Check bytes available to write, and send as much
+     * as possible ? */
+    size_t bytesRemaining = length;
+    size_t nextChunkSize = 0;
+    char* nextChunk = buffer;
+    size_t sentBytes = 0;
+    while(0 < bytesRemaining)
+    {
+        nextChunkSize = bytesRemaining;
+        if(nextChunkSize > SEND_CHUNK_SIZE_BYTES)
+        {
+            nextChunkSize = SEND_CHUNK_SIZE_BYTES;
+        }
+        sentBytes = send(socketFd, nextChunk, nextChunkSize, 0);
+        bytesRemaining -= sentBytes;
+        nextChunk += sentBytes;
+        if(0 > sentBytes)
+        {
+            LOG_CON(ERROR, socketFd, strerror(errno));
+            return -1;
+        }
+    }
+    return 0;
 }
 /*----------------------------------------------------------------------------*/
 #define CONVERT_BUFFER_LENGTH (sizeof(size_t) * 3 + 1)
@@ -180,7 +185,7 @@ int http_sendBuffer(int statusCode,
     }
     if(0 != body)
     {
-        SEND(body, bodyLength);
+        return http_sendChunked(body, bodyLength);
     }
     return 0;
 }
@@ -200,12 +205,13 @@ void http_sendDefaultResponse(int statusCode)
                 "<a href=\"" ELDRITCH_URL "\">"
                 ELDRITCH_NAME " %u.%u.%u-%u</a>"
                 "   reporting:<br><br>"
-                "<b>%u - %s</b></html>", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH,
+                "<b>%u - %s</b></html>",
+                VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH,
                 BUILD_NUM, statusCode, message);
         sendBuffer[SEND_BUF_LENGTH] = 0;
         if(0 > http_sendBuffer(statusCode,
-                               CONTENT_TYPE_DEFAULT,
-                               sendBuffer, messageLength))
+                    CONTENT_TYPE_DEFAULT,
+                    sendBuffer, messageLength))
         {
             LOG_CON(ERROR, socketFd, "Could not send reply");
         }
@@ -278,14 +284,14 @@ static char getToken(char** buffer, size_t* bufferLength)
 /*----------------------------------------------------------------------------*/
 int http_readRequest(HttpRequest* request)
 {
-        /*
-         * Request constitutes of
-         * request-lineCRLF
-         * Header1: *Value1CRLF
-         * ...CRLF
-         * CRLF
-         * Body
-         */
+    /*
+     * Request constitutes of
+     * request-lineCRLF
+     * Header1: *Value1CRLF
+     * ...CRLF
+     * CRLF
+     * Body
+     */
     enum {None, Cr1, Lf1, Cr2, Lf2} crLfReadingState;
     int numCrLf = 0;
     signed char c = 0;
@@ -390,18 +396,17 @@ int http_readRequest(HttpRequest* request)
 /*----------------------------------------------------------------------------*/
 int http_processGetHead(HttpRequest* request)
 {
-    char* fileBuffer = 0;
     size_t fileLength = 0;
     char* path = 0;
     size_t pathLength = 0;
     ContentType* contentType = 0;
     char* contentTypeString = CONTENT_TYPE_DEFAULT;
     if( (0 != url_getPath(*(request->url), request->urlMaxLength,
-                          &path, &pathLength)) ||
+                    &path, &pathLength)) ||
             (1 > pathLength) )
     {
         snprintf(buffer, BUFFER_LENGTH,
-                 "Requested url '%s' malformed\n", request->url);
+                "Requested url '%s' malformed\n", request->url);
         LOG_CON(ERROR, socketFd, buffer);
         close(socketFd);
         PANIC("Requested url malformed");
@@ -411,6 +416,8 @@ int http_processGetHead(HttpRequest* request)
     {
         path = DEFAULT_FILE_NAME;
     }
+    snprintf(buffer, BUFFER_LENGTH, "Requested '%s'\n", path);
+    LOG_CON(INFO, socketFd, buffer);
     memset(&fileState, 0, sizeof(&fileState));
     if(0 != stat(path, &fileState))
     {
@@ -423,38 +430,42 @@ int http_processGetHead(HttpRequest* request)
     contentType = contenttype_get(path, pathLength);
     if(0 == contentType)
     {
-      LOG_CON(ERROR, socketFd, "Something went severly wrong");
-      return -1;
+        LOG_CON(ERROR, socketFd, "Something went severly wrong");
+        return -1;
     }
     else
     {
-      contentTypeString = contentType->typeString;
+        contentTypeString = contentType->typeString;
     }
+
+    int fd = -1;
+    char* mmapped = 0;
+
+    /* Open desired file to ensure it is still there and readable */
     if(GET == request->type)
     {
-        fileBuffer = malloc(fileLength + 1);
-        if(0 == fileBuffer)
+        if(0 != io_mmapFileRO(path, fileLength, &fd, (void**) &mmapped))
         {
-            LOG_CON(ERROR, socketFd, "Could not allocate memory");
             close(socketFd);
-            PANIC("Could not allocate memory");
+            PANIC("Could not map requested file into memory");
         }
-        if( 0 > readFileIntoBuffer(fileBuffer, fileLength, path))
-        {
-            http_sendDefaultResponse(404);
-            free(fileBuffer);
-            close(socketFd);
-            PANIC("Requested resource not found");
-        }
+
     }
-    if(0 != http_sendBuffer(200,
-                            contentTypeString, fileBuffer, fileLength))
+
+    /* Send the HTTP Request */
+    int retval = http_sendBuffer(200, contentTypeString, mmapped, fileLength);
+    if(0 != io_unmapFile(fd, mmapped, fileLength))
     {
-        free(fileBuffer);
+        close(socketFd);
+        PANIC("Could not unmap file");
+    }
+
+    if(0 != retval)
+    {
         close(socketFd);
         PANIC("Could not send HTTP response");
     }
-    free(fileBuffer);
+
     return 0;
 }
 /*----------------------------------------------------------------------------*/

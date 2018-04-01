@@ -31,38 +31,47 @@
  * GENCE  OR  OTHERWISE)  ARISING  IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __CONFIG_H__
-#define __CONFIG_H__
 /*----------------------------------------------------------------------------*/
-#define ELDRITCH_NAME         "Eldritch"
-#define ELDRITCH_URL          "https://github.com/vidarr/eldritchd"
+#include "io.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 /*----------------------------------------------------------------------------*/
-#define VERSION_MAJOR @eldritch_VERSION_MAJOR@
-#define VERSION_MINOR @eldritch_VERSION_MINOR@
-#define VERSION_PATCH @eldritch_VERSION_PATCH@
-#define BUILD_NUM 0
+int io_mmapFileRO(char* path, size_t size, int* targetFd, void** targetPointer)
+{
+
+        int fd = open(path, O_RDONLY);
+        if(-1 == fd)
+        {
+            return -1;
+        }
+
+        char* mmapped = 0;
+        mmapped = (char*)mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
+
+        if(0 == mmapped)
+        {
+            close(fd);
+            return -1;
+        }
+
+        *targetFd = fd;
+        *targetPointer = mmapped;
+
+        return 0;
+
+}
 /*----------------------------------------------------------------------------*/
-#define MAX_OPT_STR_LEN       255
-#define MAX_PENDING_REQUESTS  25
-#define DEFAULT_CONFIG_FILE   "/home/httpd/eldritchd.rc"
-#define DEFAULT_DOCUMENT_ROOT "/home/httpd/htdocs"
-#define DEFAULT_INTERFACE     ANY_INTERFACE
-#define DEFAULT_PORT          "531"
-#define DEFAULT_LOG_FILE      "eldritch.log"
-#define DEFAULT_TIMEOUT_SECS  10
-#define DEFAULT_KEEPALIVE_TIMEOUT_SECS  300
-#define PORT_MAX              ((1 << 16) -1)
+int io_unmapFile(int fd, void* mmapped, size_t length)
+{
+    int retval = 0;
+    if(0 != mmapped)
+    {
+        retval = munmap(mmapped, length);
+
+    }
+    if(-1 < fd) close(fd);
+    return retval;
+}
 /*----------------------------------------------------------------------------*/
-#define MAX_DESCRIPTORS       25
-/*----------------------------------------------------------------------------*/
-#define ANY_INTERFACE         "*"
-/*----------------------------------------------------------------------------*/
-#define SOCKET_READ_BUFFER_LEN 255
-/*----------------------------------------------------------------------------*/
-/* Read/Send maximum of 20MB at once */
-#define SEND_CHUNK_SIZE_BYTES  (20 * 1024 * 1024)
-/*----------------------------------------------------------------------------*/
-#define MIN_TOKEN_LENGTH 16
-#define MAX_TOKEN_LENGTH (64 * 1024)
-/*----------------------------------------------------------------------------*/
-#endif
