@@ -416,6 +416,8 @@ int http_processGetHead(HttpRequest* request)
     {
         path = DEFAULT_FILE_NAME;
     }
+    snprintf(buffer, BUFFER_LENGTH, "Requested '%s'\n", path);
+    LOG_CON(INFO, socketFd, buffer);
     memset(&fileState, 0, sizeof(&fileState));
     if(0 != stat(path, &fileState))
     {
