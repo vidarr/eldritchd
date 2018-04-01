@@ -36,6 +36,7 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include "http.h"
+#include "io.h"
 #include "url.h"
 #include "contenttype.h"
 /*----------------------------------------------------------------------------*/
@@ -390,7 +391,6 @@ int http_readRequest(HttpRequest* request)
 /*----------------------------------------------------------------------------*/
 int http_processGetHead(HttpRequest* request)
 {
-    char* fileBuffer = 0;
     size_t fileLength = 0;
     char* path = 0;
     size_t pathLength = 0;
@@ -430,31 +430,35 @@ int http_processGetHead(HttpRequest* request)
     {
       contentTypeString = contentType->typeString;
     }
+
+    int fd = -1;
+    char* mmapped = 0;
+
+    /* Open desired file to ensure it is still there and readable */
     if(GET == request->type)
     {
-        fileBuffer = malloc(fileLength + 1);
-        if(0 == fileBuffer)
+        if(0 != io_mmapFileRO(path, fileLength, &fd, (void**) &mmapped))
         {
-            LOG_CON(ERROR, socketFd, "Could not allocate memory");
             close(socketFd);
-            PANIC("Could not allocate memory");
+            PANIC("Could not map requested file into memory");
         }
-        if( 0 > readFileIntoBuffer(fileBuffer, fileLength, path))
-        {
-            http_sendDefaultResponse(404);
-            free(fileBuffer);
-            close(socketFd);
-            PANIC("Requested resource not found");
-        }
+
     }
-    if(0 != http_sendBuffer(200,
-                            contentTypeString, fileBuffer, fileLength))
+
+    /* Send the HTTP Request */
+    int retval = http_sendBuffer(200, contentTypeString, mmapped, fileLength);
+    if(0 != io_unmapFile(fd, mmapped, fileLength))
     {
-        free(fileBuffer);
+        close(socketFd);
+        PANIC("Could not unmap file");
+    }
+
+    if(0 != retval)
+    {
         close(socketFd);
         PANIC("Could not send HTTP response");
     }
-    free(fileBuffer);
+
     return 0;
 }
 /*----------------------------------------------------------------------------*/

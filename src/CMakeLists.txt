@@ -12,6 +12,7 @@ set (
     hash.c
     http.c
     utils.c
+    io.c
     url.c
     contenttype.c
     configuration.c
@@ -23,6 +24,7 @@ set (
     forker.h
     hash.h
     http.h
+    io.h
     utils.h
     url.h
     contenttype.h
