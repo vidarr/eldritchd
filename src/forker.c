@@ -91,6 +91,18 @@ int insertDescriptor(int sock) {
     return -1;
 }
 /*----------------------------------------------------------------------------*/
+void closeDescriptors(void) {
+    int i;
+    close(acceptSocket);
+    for(i = 0; i < MAX_DESCRIPTORS; i++) {
+        if(descriptors[i] > -1) {
+            close(descriptors[i]);
+        }
+        descriptors[i] = -1;
+        timeoutEpocs[i] = -1;
+    }
+}
+/*----------------------------------------------------------------------------*/
 void processFileDescriptors(fd_set *descriptorSet) {
     int i;
     struct timeval timeout;
@@ -108,7 +120,11 @@ void processFileDescriptors(fd_set *descriptorSet) {
             pid = fork();
             if(0 == pid) {
                 /* I am the child */
-                close(acceptSocket);
+                /* Prevent 'out ' socket from being closed but
+                 * close all others */
+                descriptors[i] = -1;
+                timeoutEpocs[i] = -1;
+                closeDescriptors();
                 acceptor(readySocket, keepaliveTimeoutSecs, keepAlive);
                 exit(0);
             }
@@ -124,7 +140,7 @@ void processFileDescriptors(fd_set *descriptorSet) {
         struct sockaddr incomingAddress;
         socklen_t incomingAddressLength;
         int incomingSocket;
-        incomingAddressLength = sizeof(incomingAddressLength);
+        incomingAddressLength = sizeof(incomingAddress);
         LOG(INFO, "Accepting new connection...");
         incomingSocket = accept(acceptSocket,
                 &incomingAddress, &incomingAddressLength);
@@ -149,18 +165,6 @@ void processFileDescriptors(fd_set *descriptorSet) {
                 close(incomingSocket);
             }
         }
-    }
-}
-/*----------------------------------------------------------------------------*/
-void closeDescriptors(void) {
-    int i;
-    close(acceptSocket);
-    for(i = 0; i < MAX_DESCRIPTORS; i++) {
-        if(descriptors[i] > -1) {
-            close(descriptors[i]);
-        }
-        descriptors[i] = -1;
-        timeoutEpocs[i] = -1;
     }
 }
 /*----------------------------------------------------------------------------*/
