@@ -132,8 +132,8 @@ int io_waitMicroSecs(long usec)
 
     if(1000 * 1000 < usec)
     {
-        timeToWait.tv_sec /= 1000 * 1000;
-        timeToWait.tv_nsec -= timeToWait.tv_sec * 1000 * 1000 * 1000;
+        timeToWait.tv_sec = usec / 1000 * 1000;
+        timeToWait.tv_nsec -= timeToWait.tv_sec * 1000 * 1000;
     }
 
     return nanosleep(&timeToWait, 0);
