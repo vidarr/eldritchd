@@ -2,6 +2,27 @@
 PACKAGE_DIR=eldritch
 BIN_FILES_TO_PACKAGE="setup.sh uninstall.sh"
 
+function get_script_dir {
+
+    # see https://stackoverflow.com/questions/11489428/how-to-make-vim-paste-from-and-copy-to-systems-clipboard
+    SOURCE="${BASH_SOURCE[0]}"
+    while [ -h "$SOURCE" ]; do
+        DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null && pwd )"
+        SOURCE="$(readlink "$SOURCE")"
+        [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+    done
+    DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null && pwd )"
+
+    echo $DIR
+
+}
+
+
+SCRIPT_DIR=$(get_script_dir)
+ORIGINAL_DIR=$(pwd)
+cd $SCRIPT_DIR/..
+
+
 cd release && make buildnum && make
 cd -
 
@@ -19,3 +40,5 @@ for f in $BIN_FILES_TO_PACKAGE; do
 done
 
 tar cf eldritch.tar.gz $PACKAGE_DIR
+
+cd $ORIGINAL_DIR

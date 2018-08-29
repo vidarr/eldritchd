@@ -5,6 +5,21 @@ EXECUTABLE=eldritchd
 VERSION=release
 RC_SOURCE=../etc/eldritch.rc
 
+function get_script_dir {
+
+    # see https://stackoverflow.com/questions/11489428/how-to-make-vim-paste-from-and-copy-to-systems-clipboard
+    SOURCE="${BASH_SOURCE[0]}"
+    while [ -h "$SOURCE" ]; do
+        DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null && pwd )"
+        SOURCE="$(readlink "$SOURCE")"
+        [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+    done
+    DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null && pwd )"
+
+    echo $DIR
+
+}
+
 function parse_arguments {
     if [ ! -z $1 ]; then
         VERSION=$1
@@ -47,16 +62,20 @@ function setup_root_directory {
 }
 
 function install_default_config {
-  RC_TARGET="${HOME_DIR}/${EXECUTABLE}.rc"
-  if [ -e "$RC_TARGET" ]; then
-    echo "$RC_TARGET already in place - not overwriting it"
-  else
-    echo "Installing $RC_SOURCE to $RC_TARGET"
-    cp $RC_SOURCE $RC_TARGET
-    chown root:root $RC_TARGET
-  fi
+    RC_TARGET="${HOME_DIR}/${EXECUTABLE}.rc"
+    if [ -e "$RC_TARGET" ]; then
+        echo "$RC_TARGET already in place - not overwriting it"
+    else
+        echo "Installing $RC_SOURCE to $RC_TARGET"
+        cp $RC_SOURCE $RC_TARGET
+        chown root:root $RC_TARGET
+    fi
 }
 
+
+SCRIPT_DIR=$(get_script_dir)
+ORIGINAL_DIR=$(pwd)
+cd $SCRIPT_DIR
 
 parse_arguments $*
 check_root
@@ -64,3 +83,5 @@ setup_user
 setup_executable
 setup_root_directory
 install_default_config
+
+cd $ORIGINAL_DIR
