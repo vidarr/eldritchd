@@ -398,16 +398,18 @@ int http_processGetHead(HttpRequest* request)
         close(socketFd);
         PANIC("Requested resource not found");
     }
+    if ((!S_ISREG(fileState.st_mode)) && (!S_ISLNK(fileState.st_mode))) {
+        http_sendDefaultResponse(404);
+        close(socketFd);
+        PANIC("Requested resource is not a regular file or symlink");
+    }
     fileLength = fileState.st_size;
     /* Get content type */
     contentType = contenttype_get(path, pathLength);
-    if(0 == contentType)
-    {
+    if (0 == contentType) {
         LOG_CON(ERROR, socketFd, "Something went severly wrong");
         return -1;
-    }
-    else
-    {
+    } else {
         contentTypeString = contentType->typeString;
     }
 
@@ -415,26 +417,21 @@ int http_processGetHead(HttpRequest* request)
     char* mmapped = 0;
 
     /* Open desired file to ensure it is still there and readable */
-    if(GET == request->type)
-    {
-        if(0 != io_mmapFileRO(path, fileLength, &fd, (void**) &mmapped))
-        {
+    if (GET == request->type) {
+        if (0 != io_mmapFileRO(path, fileLength, &fd, (void**)&mmapped)) {
             close(socketFd);
             PANIC("Could not map requested file into memory");
         }
-
     }
 
     /* Send the HTTP Request */
     int retval = http_sendBuffer(200, contentTypeString, mmapped, fileLength);
-    if(0 != io_unmapFile(fd, mmapped, fileLength))
-    {
+    if (0 != io_unmapFile(fd, mmapped, fileLength)) {
         close(socketFd);
         PANIC("Could not unmap file");
     }
 
-    if(0 != retval)
-    {
+    if (0 != retval) {
         close(socketFd);
         PANIC("Could not send HTTP response");
     }
@@ -442,33 +439,28 @@ int http_processGetHead(HttpRequest* request)
     return 0;
 }
 /*----------------------------------------------------------------------------*/
-void http_accept(int conSocket, int timeoutSecs, int keepAlive)
-{
+void http_accept(int conSocket, int timeoutSecs, int keepAlive) {
     /* Init request structure */
     HttpRequest* request = malloc(sizeof(HttpRequest));
     socketFd = conSocket;
-    memset((void *)request, 0, sizeof(HttpRequest));
+    memset((void*)request, 0, sizeof(HttpRequest));
     char* urlBuffer = malloc(128);
     request->url = &urlBuffer;
     request->urlMaxLength = 128;
     LOG_CON(INFO, socketFd, "New HTTP request incoming");
     /* Set timeout on socket */
-    if(0 > setSocketTimeout(socketFd, timeoutSecs))
-    {
+    if (0 > setSocketTimeout(socketFd, timeoutSecs)) {
         LOG_CON(ERROR, socketFd, "Could not set timeout on client socket");
         close(socketFd);
         PANIC("Could not timeout on socket");
     }
-    do
-    {
-        if( 0 != http_readRequest(request))
-        {
+    do {
+        if (0 != http_readRequest(request)) {
             LOG_CON(socketFd, ERROR, strerror(errno));
             close(socketFd);
             PANIC("Something wrong with the HTTP header");
         }
-        switch(request->type)
-        {
+        switch (request->type) {
             case GET:
             case HEAD:
                 http_processGetHead(request);
@@ -479,9 +471,9 @@ void http_accept(int conSocket, int timeoutSecs, int keepAlive)
                 LOG_CON(WARN, socketFd, "Unsupported request type");
                 PANIC("Bad request");
             default:
-                assert(! "SHOULD NEVER HAPPEND");
+                assert(!"SHOULD NEVER HAPPEND");
         }
-    }while(keepAlive);
+    } while (keepAlive);
     close(socketFd);
 }
 /*----------------------------------------------------------------------------*/
