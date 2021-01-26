@@ -92,15 +92,17 @@ cd $HOME
 Eldritch can now be started via
 
 ```Bash
-bin/eldritchd [PATH_TO_CONFIG_FILE]
+bin/eldritchd [-f PATH_TO_CONFIG_FILE] [-n]
 ```
 
-If `PATH_TO_CONFIG_FILE` is omitted, eldritch will try to load a default config
-file.
+If `-f` (and hence `PATH_TO_CONFIG_FILE` ) is omitted,
+eldritch will try to load a default config file.
 
 Now eldritch will start up, load the config, try to bind to the interfaces
 specified in the config, chroot to its document root, drop root priviledges and
 deamonize.
+
+`-n` prevents eldritch from deamonizing.
 
 # Using Eldritch
 

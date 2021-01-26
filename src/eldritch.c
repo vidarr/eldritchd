@@ -190,8 +190,6 @@ void parseCmdLineOpts(int argc, char **argv, struct CmdLineOpts *opts) {
 
         if(-1 == c) break;
 
-        fprintf(stderr, "option is %c\n", c);
-
         switch (c) {
             case 'f':
 
