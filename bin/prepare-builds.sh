@@ -17,11 +17,18 @@ function get_script_dir {
 
 SCRIPT_DIR=$(get_script_dir)
 ORIGINAL_DIR=$(pwd)
-cd $SCRIPT_DIR/..
+SRC_DIR=$SCRIPT_DIR/..
+
+DEST_DIR=$1
+
+[ "X$DEST_DIR" == "X" ] && DEST_DIR=$SRC_DIR
+
+cd $DEST_DIR
 
 [ -d release ] || mkdir release
-cd release && cmake -DCMAKE_BUILD_TYPE=Release .. && cd ..
+cd release && cmake -DCMAKE_BUILD_TYPE=Release $SRC_DIR && cd ..
 [ -d debug ]   || mkdir debug
-cd debug && cmake -DCMAKE_BUILD_TYPE=Debug .. && cd ..
+cd debug && cmake -DCMAKE_BUILD_TYPE=Debug $SRC_DIR && cd ..
 
 cd $ORIGINAL_DIR
+
