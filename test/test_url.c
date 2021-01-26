@@ -40,7 +40,7 @@ char* checkUrl(char* url, char* path)
     char* buffer;
     size_t pathLength = 0;
     char* foundPath = 0;
-    size_t urlLength = strlen(url);
+    const size_t urlLength = strlen(url);
     buffer = (char*)malloc(sizeof(char) * urlLength + 1);
     strncpy(buffer, url, urlLength + 1);
     buffer[urlLength] = 0;
